@@ -1,0 +1,190 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace StorageI.Models
+{
+    public partial class Report3gu
+    {
+        public int Id { get; set; }
+        public DateTime? Mdate { get; set; }
+        public string? PsgName { get; set; }
+        public string? Garnizon { get; set; }
+        public int? PsgId { get; set; }
+        public int? GarnizoneId { get; set; }
+        /// <summary>
+        /// подразделение, местный, территориальный
+        /// </summary>
+        public int? Mtype { get; set; }
+        public int? АцBr { get; set; }
+        public int? АцRezerv { get; set; }
+        public int? АцRemont { get; set; }
+        public int? ПнсBr { get; set; }
+        public int? ПнсRezerv { get; set; }
+        public int? ПнсRemont { get; set; }
+        public int? АцлBr { get; set; }
+        public int? АцлRezerv { get; set; }
+        public int? АцлRemont { get; set; }
+        public int? АсаBr { get; set; }
+        public int? АсаRezerv { get; set; }
+        public int? АсаRemont { get; set; }
+        public int? АнрBr { get; set; }
+        public int? АнрRezerv { get; set; }
+        public int? АнрRemont { get; set; }
+        public int? АвBr { get; set; }
+        public int? АвRezerv { get; set; }
+        public int? АвRemont { get; set; }
+        public int? Ал30Br { get; set; }
+        public int? Ал30Rezerv { get; set; }
+        public int? Ал30Remont { get; set; }
+        public int? Ал50Br { get; set; }
+        public int? Ал50Rezerv { get; set; }
+        public int? Ал50Remont { get; set; }
+        public int? АкпBr { get; set; }
+        public int? АкпRezerv { get; set; }
+        public int? АкпRemont { get; set; }
+        public int? АрBr { get; set; }
+        public int? АрRezerv { get; set; }
+        public int? АрRemont { get; set; }
+        public int? АмпBr { get; set; }
+        public int? АмпRezerv { get; set; }
+        public int? АмпRemont { get; set; }
+        public int? АгдзсBr { get; set; }
+        public int? АгдзсRezerv { get; set; }
+        public int? АгдзсRemont { get; set; }
+        public int? ПсаBr { get; set; }
+        public int? ПсаRezerv { get; set; }
+        public int? ПсаRemont { get; set; }
+        public int? УксBr { get; set; }
+        public int? УксRezerv { get; set; }
+        public int? УксRemont { get; set; }
+        public int? АсмBr { get; set; }
+        public int? АсмRezerv { get; set; }
+        public int? АсмRemont { get; set; }
+        public int? АппBr { get; set; }
+        public int? АппRezerv { get; set; }
+        public int? АппRemont { get; set; }
+        public int? ОперативнаяГруппаBr { get; set; }
+        public int? ОперативнаяГруппаRezerv { get; set; }
+        public int? ОперативнаяГруппаRemont { get; set; }
+        public int? МотопомпыBr { get; set; }
+        public int? МотопомпыRezerv { get; set; }
+        public int? МотопомпыRemont { get; set; }
+        public int? Арс14Br { get; set; }
+        public int? Арс14Rezerv { get; set; }
+        public int? Арс14Remont { get; set; }
+        public int? ПриспособленныеДляПеревозкиОвBr { get; set; }
+        public int? ПриспособленныеДляПеревозкиОвRezerv { get; set; }
+        public int? ПриспособленныеДляПеревозкиОвRemont { get; set; }
+        public int? СнегоходыBr { get; set; }
+        public int? СнегоходыRezerv { get; set; }
+        public int? СнегоходыRemont { get; set; }
+        public int? КвадроциклыBr { get; set; }
+        public int? КвадроциклыRezerv { get; set; }
+        public int? КвадроциклыRemont { get; set; }
+        public int? КатераЛодкиBr { get; set; }
+        public int? КатераЛодкиRezerv { get; set; }
+        public int? КатераЛодкиRemont { get; set; }
+        public int? СвпBr { get; set; }
+        public int? СвпRezerv { get; set; }
+        public int? СвпRemont { get; set; }
+        public int? Ав1Br { get; set; }
+        public int? Ав1Rezerv { get; set; }
+        public int? Ав1Remont { get; set; }
+        public int? ГрузовойАвтомобильBr { get; set; }
+        public int? ГрузовойАвтомобильRezerv { get; set; }
+        public int? ГрузовойАвтомобильRemont { get; set; }
+        public int? ПожарныйПоездBr { get; set; }
+        public int? ПожарныйПоездRezerv { get; set; }
+        public int? ПожарныйПоездRemont { get; set; }
+        public string? МаркаБпла1 { get; set; }
+        public int? Бпла1Br { get; set; }
+        public int? Бпла1Rezerv { get; set; }
+        public int? Бпла1Remont { get; set; }
+        public int? МаркаБпла2 { get; set; }
+        public int? Бпла2Br { get; set; }
+        public int? Бпла2Rezerv { get; set; }
+        public int? Бпла2Remont { get; set; }
+        public int? ВодолазноеСнаряжениеBr { get; set; }
+        public int? ВодолазноеСнаряжениеRezerv { get; set; }
+        public int? ВодолазноеСнаряжениеRemont { get; set; }
+        public int? ВодолазноеСнаряжениеКомплектBr { get; set; }
+        public int? ВодолазноеСнаряжениеКомплектRezerv { get; set; }
+        public int? ВодолазноеСнаряжениеКомплектRemont { get; set; }
+        public string? МаркаГасиРучной { get; set; }
+        public int? ГасиРучнойBr { get; set; }
+        public int? ГасиРучнойRezerv { get; set; }
+        public int? ГасиРучнойRemont { get; set; }
+        public int? МаркаГасиМех { get; set; }
+        public int? ГасиМеханизированныйBr { get; set; }
+        public int? ГасиМеханизированныйRezerv { get; set; }
+        public int? ГасиМеханизированныйRemont { get; set; }
+        public int? МедКомплектBr { get; set; }
+        public int? МедКомплектRezerv { get; set; }
+        public int? МедКомплектRemont { get; set; }
+        public int? БензорезыBr { get; set; }
+        public int? БензорезыRezerv { get; set; }
+        public int? БензорезыRemont { get; set; }
+        public int? БензопилыBr { get; set; }
+        public int? БензопилыRezerv { get; set; }
+        public int? БензопилыRemont { get; set; }
+        public int? ИглаBr { get; set; }
+        public int? ИглаRezerv { get; set; }
+        public int? ИглаRemont { get; set; }
+        public int? РанцевыеОгнетушителиBr { get; set; }
+        public int? РанцевыеОгнетушителиRezerv { get; set; }
+        public int? РанцевыеОгнетушителиRemont { get; set; }
+        public string? SizodsMname { get; set; }
+        public int? SizodsRaschet { get; set; }
+        public int? SizodsRezerv { get; set; }
+        public int? SizodsPostGdzs { get; set; }
+        public int? SizodsBazaGdzs { get; set; }
+        public int? Ток { get; set; }
+        public int? Таск { get; set; }
+        public int? ПоСписку1 { get; set; }
+        public int? Налицо1 { get; set; }
+        public int? Всего2 { get; set; }
+        public int? Нк2 { get; set; }
+        public int? Диспетчер2 { get; set; }
+        public int? Пнк2 { get; set; }
+        public int? Ко2 { get; set; }
+        public int? Водители2 { get; set; }
+        public int? Пожарные2 { get; set; }
+        public int? ЛсВБр2 { get; set; }
+        public int? Водолазы2 { get; set; }
+        public int? Гимс2 { get; set; }
+        public int? Крпсс2 { get; set; }
+        public int? Пнк3 { get; set; }
+        public int? Нк3 { get; set; }
+        public int? Ко3 { get; set; }
+        public int? Водители3 { get; set; }
+        public int? Пожарные3 { get; set; }
+        public int? Всего4 { get; set; }
+        public int? Отпуск4 { get; set; }
+        public int? ПоБольничному4 { get; set; }
+        public int? Командировка4 { get; set; }
+        public int? Прочее4 { get; set; }
+        public int? ПгTotal { get; set; }
+        public int? ПгFault { get; set; }
+        public int? ПвTotal { get; set; }
+        public int? ПвFault { get; set; }
+        public int? ПпTotal { get; set; }
+        public int? ПпFault { get; set; }
+        public int? ПенообразовательInwork { get; set; }
+        public int? ПенообразовательInrezerv { get; set; }
+        public string? НачальникКараула { get; set; }
+        public string? ОперативныйДежурныйПоГарнизону { get; set; }
+        public string? ДежурныйОтГпн { get; set; }
+        public string? ДежурныйОтГимс { get; set; }
+        public string? ОтветственныйЗаСборДпо { get; set; }
+        public string? ДиспетчерЕсс01 { get; set; }
+        public int Karaul { get; set; }
+        public int Dataerr { get; set; }
+        public string НачальникДежурнойСменыТпсг { get; set; } = null!;
+        public string РуководительСменыТпсг { get; set; } = null!;
+        public string СтаршийПомошникТпсг { get; set; } = null!;
+        public string НачальникТпсг { get; set; } = null!;
+
+        public virtual Garnizon? Garnizone { get; set; }
+        public virtual Garnizon? Psg { get; set; }
+    }
+}

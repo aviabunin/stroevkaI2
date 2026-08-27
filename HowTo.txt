@@ -1,0 +1,47 @@
+372 - всего, в т.ч. 309 ПЧ +(63 итогов = 18ПСГ+ 45 (38 рпсг+7тпсг) итогов ПСГ)  385-372 = 13 - 6 ВПО+6 ФПС+1 АСФ
+
+-- Полная перезаливка (аналог COMPLETE REFRESH)
+TRUNCATE TABLE apivot_mat;
+INSERT INTO apivot_mat SELECT * FROM apivot;
+
+CREATE TABLE apivot_mat AS
+SELECT * FROM apivot;
+
+Scaffold-DbContext "server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set=utf8; Convert Zero Datetime=True; Allow Zero Datetime=True" MySql.EntityFrameworkCore -OutputDir ModelsStroevkaMySql -Tables psg,pchs,fire_psg,fire_equips_pivot,fire_psg_stat, titogs,apivot_mat,contacts,sredstva,sostav,sizod,waters,penas,kostyms,psgdata,post,personal,personalpost,cache_nachkar,psg_total_rows -f
+
+1. Сначала подключим всё для EntityFramework. беру из работающих Storage
+Эти 3 библиотеки устанавливаем в проект StorageI
+
+    Шаг1. Install-Package Microsoft.EntityFrameworkCore -Version 6.0.15  
+        Это основная библиотека для работы через EntityFrameworkCore
+    Шаг2. Install-Package Microsoft.EntityFrameworkCore.Design -Version 6.0.15
+           -эти 2 библиотеки для разных команд, потом посмотрю
+    Шаг3. Install-Package Microsoft.EntityFrameworkCore.Tools -Version 6.0.15
+
+Чтобы работал Scaffold - он же запускается из основного проекта, то если не установлен Microsoft.EntityFrameworkCore
+   система скажет про это и нужно первую команду выполнить и для основного проекта.
+   
+Устанавливаем основной проект и выполняем:
+       Шаг4. Install-Package Microsoft.EntityFrameworkCore -Version 6.0.15  
+
+Теперь можно для работы с MySQL сделать   
+         Замечание 1. MySql теперь подключается с помощью (Без MySQL.Data...)
+                   2. Проект StorageI
+       Шаг5. Install-Package MySql.EntityFrameworkCore -Version 6.0.10
+И теперь можно пользоваться Scaffold - устанавиваем также в StorageI.    В команде указан каталог - в который писать объекты и 
+        перечень таблиц из базы данных dbForge , пока одна fire_equips_pivot
+                           -OutputDir ModelsStroevkaMySql -Tables fire_equips_pivot 
+   каталог, который будет в проекте StorageI - 
+
+Всё, теперь можно пользоваться. Дальше читать не нужно.
+ 
+Install-Package Microsoft.VisualStudio.Web.CodeGeneration.Design -Version 6.0.13
+Install-Package Microsoft.VisualStudio.Web.CodeGenerat=ors.Mvc  -Version 6.0.13
+
+Install-Package Microsoft.EntityFrameworkCore -Version 6.0.15
+Install-Package Microsoft.EntityFrameworkCore.Design -Version 6.0.15
+Install-Package ClosedXML.Report -Version 0.2.10
+Install-Package iTextSharp -Version 5.5.13.4
+
+Scaffold-DbContext "server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set=utf8; Convert Zero Datetime=True; Allow Zero Datetime=True" MySql.EntityFrameworkCore -OutputDir ModelsStroevkaMySql -Tables fire_psg_stats -f
+Scaffold-DbContext "server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set=utf8; Convert Zero Datetime=True; Allow Zero Datetime=True" MySql.EntityFrameworkCore -OutputDir ModelsStroevkaMySql -Tables fire_psg_stats,contacts -f
