@@ -1,3 +1,6 @@
+git commit -m "Переместил все исходники в папку src"
+git config --global user.email "aviabunin@mail.ru"
+git config --global user.name "aviabunin"
 372 - всего, в т.ч. 309 ПЧ +(63 итогов = 18ПСГ+ 45 (38 рпсг+7тпсг) итогов ПСГ)  385-372 = 13 - 6 ВПО+6 ФПС+1 АСФ
 
 -- Полная перезаливка (аналог COMPLETE REFRESH)
