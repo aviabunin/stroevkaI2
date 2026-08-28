@@ -10,7 +10,7 @@ INSERT INTO apivot_mat SELECT * FROM apivot;
 CREATE TABLE apivot_mat AS
 SELECT * FROM apivot;
 
-Scaffold-DbContext "server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set=utf8; Convert Zero Datetime=True; Allow Zero Datetime=True" MySql.EntityFrameworkCore -OutputDir ModelsStroevkaMySql -Tables psg,pchs,fire_psg,fire_equips_pivot,fire_psg_stat, titogs,apivot_mat,contacts,sredstva,sostav,sizod,waters,penas,kostyms,psgdata,post,personal,personalpost,cache_nachkar,psg_total_rows -f
+Scaffold-DbContext "server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set=utf8; Convert Zero Datetime=True; Allow Zero Datetime=True" MySql.EntityFrameworkCore -OutputDir ModelsStroevkaMySql -Tables psg,pchs,fire_psg,fire_equips_pivot,fire_psg_stat, titogs,apivot_mat,contacts,sredstva,sostav,sizod,waters,penas,kostyms,psgdata,post,personal,personalpost,cache_nachkar,psg_total_rows, psgstat -f
 
 1. Сначала подключим всё для EntityFramework. беру из работающих Storage
 Эти 3 библиотеки устанавливаем в проект StorageI

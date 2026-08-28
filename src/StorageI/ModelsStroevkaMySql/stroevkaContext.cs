@@ -29,6 +29,7 @@ namespace StorageI.ModelsStroevkaMySql
         public virtual DbSet<Psg> Psgs { get; set; } = null!;
         public virtual DbSet<PsgTotalRow> PsgTotalRows { get; set; } = null!;
         public virtual DbSet<Psgdatum> Psgdata { get; set; } = null!;
+        public virtual DbSet<Psgstat> Psgstats { get; set; } = null!;
         public virtual DbSet<Sizod> Sizods { get; set; } = null!;
         public virtual DbSet<Sostav> Sostavs { get; set; } = null!;
         public virtual DbSet<Sredstva> Sredstvas { get; set; } = null!;
@@ -2478,6 +2479,67 @@ namespace StorageI.ModelsStroevkaMySql
                     .WithMany(p => p.InverseParentNavigation)
                     .HasForeignKey(d => d.Parent)
                     .HasConstraintName("FK_psgdata_parent");
+            });
+
+            modelBuilder.Entity<Psgstat>(entity =>
+            {
+                entity.ToTable("psgstat");
+
+                entity.Property(e => e.Id)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("id");
+
+                entity.Property(e => e.Datafilled)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("datafilled");
+
+                entity.Property(e => e.Displayname)
+                    .HasColumnType("text")
+                    .HasColumnName("displayname");
+
+                entity.Property(e => e.Garntype)
+                    .HasColumnType("text")
+                    .HasColumnName("garntype");
+
+                entity.Property(e => e.Inreport)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("inreport")
+                    .HasDefaultValueSql("'1'");
+
+                entity.Property(e => e.Isitog)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("isitog")
+                    .HasDefaultValueSql("'0'");
+
+                entity.Property(e => e.Karaul)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("karaul");
+
+                entity.Property(e => e.Mdate)
+                    .HasColumnType("timestamp")
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasColumnName("mdate")
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(e => e.Name)
+                    .HasColumnType("text")
+                    .HasColumnName("name");
+
+                entity.Property(e => e.Norder)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("norder");
+
+                entity.Property(e => e.Parent)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("parent");
+
+                entity.Property(e => e.Rank)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("rank");
+
+                entity.Property(e => e.Used)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("used");
             });
 
             modelBuilder.Entity<Sizod>(entity =>
