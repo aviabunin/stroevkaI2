@@ -43,6 +43,7 @@ namespace StorageI.ModelsStroevkaMySql
         public int Tofirst { get; set; }
         public int Totow { get; set; }
 
+        public virtual Psgstat? Subdivision1 { get; set; }
         public virtual Psgdatum? SubdivisionNavigation { get; set; }
     }
 }

@@ -12,7 +12,7 @@ namespace stroevkaI.Models
         public string Category { get; set; }                    // ППС,ФПС, ДПО - для листьев gps,main...  для внутр узлов
         public int ParentId { get; set; }                       //  Id родителя
         public List<ReportNode> Children { get; set; } = new List<ReportNode>();  // дочки
-        public string RowId;                                    //  Id строки грида - 14 символов
+        public int Isitog { get; set; }                       //  признак итогой строки
 
         // RawData: sourceType -> (itemName -> (fieldName -> value))
         public Dictionary<string, Dictionary<string, Dictionary<string, decimal>>> RawData { get; set; }

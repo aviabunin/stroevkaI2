@@ -1,10 +1,18 @@
-﻿using StorageI.ModelsStroevkaMySql;
+﻿//Удаляем методы:
+//    getCategory()(теперь категория берётся из psgstat.garntype)
+
+//    CleanCategory()
+//    FindParentPsg(), FindNodeById()(если не нужны для других целей)
+
+using StorageI.ModelsStroevkaMySql;
 using stroevkaI.Models;
+using Microsoft.EntityFrameworkCore;
 
 public class PivotTreeBuilder
 {
-    Dictionary<int, string> psgIdRows;
+    Dictionary<int, Psgstat> _psgDict;
     List<PsgTotalRow> psg_total_rows;
+    
 
     ReportNode root = null;
     public static stroevkaContext _context = new stroevkaContext();
@@ -16,13 +24,29 @@ public class PivotTreeBuilder
 
     public ReportNode BuildTree()
     {
-        // 1. Загружаем все узлы psgdata (включая ПСГ и ПЧ)  - ВСЕГО 309(пч)+18(псг)+1(террит)
-        var allNodes = _context.Psgdata
-            .Where(p => p.Old == true) // возможно, только актуальные
-            .Where(p=>!p.Garnizon.Contains("итоги"))
+        // 1. Загружаем все узлы из psgstat (только используемые, если used=1)
+        var allNodes = _context.Psgstats
+            .Include(p => p.Sredstvas)
+            .Include(p => p.Sostavs)
+            .Include(p => p.Sizods)
+            .Include(p => p.Penas)
+            .Include(p => p.Kostyms)
+            .Include(p => p.Waters)
+            .Include(p => p.Contacts)
+            .Where(p => p.Used == 1)
             .ToList();
-     
-        // 2. Загружаем сырые данные для листьев
+
+        //var allNodes = _context.Psgstats
+        //    .Where(p => p.Used == 1) // если есть поле used, иначе уберите Where
+        //    .ToList();
+
+        // Заполняем словарь для быстрого доступа по Id
+        _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
+
+        // 2. Загружаем сырые данные для листьев (как было)
+
+
+
         var sredstvaList = _context.Sredstvas.ToList();
         var sostavList = _context.Sostavs.ToList();
         var sizodList = _context.Sizods.ToList();
@@ -30,29 +54,12 @@ public class PivotTreeBuilder
         var kostymsList = _context.Kostyms.ToList();
         var watersList = _context.Waters.ToList();
         var contactsList = _context.Contacts.ToList();
-        psg_total_rows = _context.PsgTotalRows.ToList();
 
-        // Группируем данные по subdivision_id
+        // Группируем данные по subdivision_id (Id узла)
         var sredstvaBySubdiv = sredstvaList
             .GroupBy(s => s.SubdivisionId)
             .ToDictionary(g => g.Key, g => g.ToList());
-        #region другие таблицы
-        //var sostavBySubdiv = sostavList
-        //    .GroupBy(s => s.SubdivisionId)
-        //    .ToDictionary(g => g.Key, g => g.ToList());
 
-        //var sizodBySubdiv = sizodList
-        //    .GroupBy(s => s.SubdivisionId)
-        //    .ToDictionary(g => g.Key, g => g.ToList());
-
-        //var penasBySubdiv = penasList
-        //    .GroupBy(p => p.SubdivisionId)
-        //    .ToDictionary(g => g.Key, g => g.ToList());
-
-        //var kostymsBySubdiv = kostymsList
-        //    .GroupBy(k => k.SubdivisionId)
-        //    .ToDictionary(g => g.Key, g => g.ToList());
-        #endregion
         // 3. Строим словарь узлов по Id
         var nodeDict = new Dictionary<int, ReportNode>();
         foreach (var psg in allNodes)
@@ -60,20 +67,18 @@ public class PivotTreeBuilder
             var node = new ReportNode
             {
                 Id = psg.Id,
-                Name = psg.Garnizon ?? psg.Fullname ?? psg.Garnizon,
-                Category = getCategory(psg),
+                Name = psg.Name ?? psg.Displayname ?? psg.Name, // используем подходящее поле
+                Category = psg.Garntype ?? "",
                 ParentId = psg.Parent ?? 0,
-                // взять rowId из psg - из словаря id,rowId
+                Isitog = psg.Isitog ?? 0,
                 RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
-                
             };
-            if (node.Category.Trim() == "")
-                node.Category = "";
-            // Заполняем RawData для листьев (если есть данные)
-            if (sredstvaBySubdiv.ContainsKey(psg.Id))
+
+            // Заполняем RawData для листьев (только если это ПЧ, т.е. IsItog == 0)
+            if (psg.Isitog == 0 && sredstvaBySubdiv.ContainsKey(psg.Id))
             {
                 var sredstvaForNode = sredstvaBySubdiv[psg.Id];
-                var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();// Пока только sredstva, Остальные потом
+                var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();
                 foreach (var s in sredstvaForNode)
                 {
                     var fields = new Dictionary<string, decimal>
@@ -84,23 +89,22 @@ public class PivotTreeBuilder
                     };
                     sredstvaDict[s.NameSredstvo] = fields;
                 }
-                node.RawData["sredstva"] = sredstvaDict;  // Аналог окна средств - имя, поля
+                node.RawData["sredstva"] = sredstvaDict;
             }
 
-            // Аналогично для Sostav, Sizod, Penas, Kostyms...
-            // ... (можно вынести в отдельный метод)
+            // Аналогично для других таблиц (Sostav, Sizod и т.д.) – можно вынести в отдельный метод
 
             nodeDict[psg.Id] = node;
         }
 
         // 4. Строим дерево, связывая детей с родителями
-        
+        ReportNode root = null;
         foreach (var node in nodeDict.Values)
         {
-            if (node.ParentId == 0) // корень?
+            if (node.ParentId == 0 || node.ParentId == node.Id)
             {
-                // Можно определить корень по условию, например, если это территориальный (id=11)
-                if (node.Id == 11) root = node;
+                // Корень – обычно id=1 (территориальный)
+                if (node.Id == 1) root = node;
                 continue;
             }
             if (nodeDict.ContainsKey(node.ParentId))
@@ -110,26 +114,13 @@ public class PivotTreeBuilder
             }
         }
 
-        // Строим словарь rowId
-        var rowIdMap = BuildRowIdMap();
-
-        // Присваиваем RowId для каждого узла
-        AssignRowIds(root, rowIdMap);
+        // Если корень не найден, возьмём узел с ParentId == 0
+        if (root == null)
+            root = nodeDict.Values.FirstOrDefault(n => n.ParentId == 0);
 
         return root;
     }
 
-    private string getCategory(Psgdatum psgdata) {
-
-        if (psgdata.Garntype.Trim() != "")
-            return psgdata.Garntype;
-        var ptr = psg_total_rows.Where(p => p.PsgId == psgdata.Id).FirstOrDefault();
-        if (ptr == null)
-            return "";
-        return ptr.CategoryDisplay;
-
-
-    }
 
     // -------------------------------------------
     // 3.4 ГЕНЕРАЦИЯ СТРОК PivotRow
@@ -139,27 +130,26 @@ public class PivotTreeBuilder
         if (rootNode == null)
             rootNode = BuildTree();
 
-        //Инициализируем конфиги всех колонок
         InitializeColumnConfigs();
 
         var result = new List<PivotRow>();
 
-        // 1. Листья (ПЧ)
-        var leaves = GetAllLeaves(rootNode);
+        // 1. Листья (ПЧ) – это узлы с IsItog == 0
+        var leaves = GetAllLeaves(rootNode); // или можно отфильтровать по IsItog == 0
         foreach (var leaf in leaves)
         {
             var row = CreateLeafRow(leaf);
             result.Add(row);
         }
 
-        // 2. Итоги по ПСГ (для каждой категории)
-        foreach (var psgNode in rootNode.Children)
+        // 2. Итоги по ПСГ (для каждой категории) – узлы с IsItog == 1, но не корень
+        foreach (var psgNode in rootNode.Children) // дети корня – районные ПСГ
         {
             var psgRows = CreateSummaryRows(psgNode, PivotConfigs.PsgLevelConfig, isTerritorial: false);
             result.AddRange(psgRows);
         }
 
-        // 3. Территориальные итоги
+        // 3. Территориальные итоги – корень
         var territorialRows = CreateSummaryRows(rootNode, PivotConfigs.TerritorialLevelConfig, isTerritorial: true);
         result.AddRange(territorialRows);
 
@@ -178,10 +168,9 @@ public class PivotTreeBuilder
             Parent = leaf.ParentId,
             Norder = 0,
             Isitog = 0,
-            //RowId1 = leaf.
         };
 
-        // Заполняем все числовые поля с помощью конфигураций
+        // Заполняем числовые поля (как было)
         foreach (var kv in columnConfigs)
         {
             var propName = kv.Key;
@@ -190,29 +179,19 @@ public class PivotTreeBuilder
             SetProperty(row, propName, value);
         }
 
-        // Отдельно обрабатываем текстовое поле Nachkar
-        if (leaf.RawData.TryGetValue("sostav", out var sostavDict) && sostavDict.TryGetValue("sostav", out var fields))
-        {
-            // Предположим, что Nachkar хранится в отдельном поле, или берём из sostav
-            // В реальности может быть свойство Nachkar в таблице Sostav.
-            row.Nachkar = fields.TryGetValue("nachkar_text", out var val) ? val.ToString() : "";
-        }
-
-        // Datafilled – вычисляем как наличие данных в ключевых полях (например, сумма всех br > 0)
-       // row.Datafilled = IsDatafilled(leaf);  ДРУГОЙ СМЫСЛ ПОЛЯ
+        // Nachkar и Datafilled – как было
+        // ...
 
         return row;
     }
 
     // Создание итоговых строк для узла (ПСГ или территориальный)
+
     private List<PivotRow> CreateSummaryRows(ReportNode node, LevelConfig levelConfig, bool isTerritorial)
     {
         var rows = new List<PivotRow>();
         foreach (var categoryRule in levelConfig.Categories)
         {
-
-            // Если нет в списке итогов - пропускаем
-
             var row = new PivotRow
             {
                 ПСГ = isTerritorial ? "Территориальный" : node.Name,
@@ -222,10 +201,9 @@ public class PivotTreeBuilder
                 Parent = node.ParentId == 0 ? (int?)null : node.ParentId,
                 Norder = 0,
                 Isitog = 1,
-                RowId1 = $"{node.Id}_{categoryRule.CategoryId}" // можно сгенерировать
             };
 
-            // Вычисляем значения для каждой колонки с учётом категории
+            // Вычисляем значения для колонок
             foreach (var kv in columnConfigs)
             {
                 var propName = kv.Key;
@@ -234,7 +212,6 @@ public class PivotTreeBuilder
                 SetProperty(row, propName, value);
             }
 
-            // Текстовое поле Nachkar для итоговых строк – пустое
             row.Nachkar = "";
             row.Datafilled = false;
 
@@ -242,6 +219,7 @@ public class PivotTreeBuilder
         }
         return rows;
     }
+
     private decimal ComputeNodeValue(ReportNode node, ColumnConfig config, LevelConfig levelConfig, string categoryId)
     {
         var rule = levelConfig.Categories.FirstOrDefault(r => r.CategoryId == categoryId);
@@ -306,127 +284,7 @@ public class PivotTreeBuilder
         return total;
     }
 
-    // Вспомогательный метод для получения имени ПСГ для листа
-    private string GetPsgNameForNode(ReportNode node)
-    {
-        // Ищем родителя с типом "ПСГ" (у него есть дети, и он не корень)
-        var parent = FindParentPsg(node);
-        return parent?.Name ?? "Без ПСГ";
-    }
 
-    private ReportNode FindParentPsg(ReportNode node)
-    {
-        if (node.ParentId == 0) return null;
-        var parent = FindNodeById(root, node.ParentId); // нужен доступ к root
-        if (parent == null) return null;
-        if (parent.Children.Count > 0 && parent.ParentId != 0) // если не корень и есть дети
-            return parent;
-        return FindParentPsg(parent);
-    }
-
-    private ReportNode FindNodeById(ReportNode root_, int id)
-    {
-        if (root_.Id == id) return root_;
-        foreach (var child in root_.Children)
-        {
-            var found = FindNodeById(child, id);
-            if (found != null) return found;
-        }
-        return null;
-    }
-    private void AssignRowIds(ReportNode node, Dictionary<string, string> rowIdMap)
-    {
-        if (node == null) return;
-
-        string key = null;
-        if (node.Children.Count == 0)
-        {
-            // Лист: ключ = Id
-            key = node.Id.ToString();
-        }
-        else
-        {
-            // Итоговый узел: ключ = Name + "_" + категория (очищенная)
-            var psg = node.Name?.Trim();
-            var category = node.Category?.Trim();
-            if (!string.IsNullOrEmpty(psg) && !string.IsNullOrEmpty(category))
-            {
-                category = CleanCategory(category);
-                key = $"{psg}_{category}";
-            }
-        }
-
-        if (key != null && rowIdMap.TryGetValue(key, out var rowId))
-        {
-            node.RowId = rowId;
-        }
-
-        // Рекурсивно для детей
-        foreach (var child in node.Children)
-        {
-            AssignRowIds(child, rowIdMap);
-        }
-    }
-    public Dictionary<string, string> BuildRowIdMap()
-    {
-        var map = new Dictionary<string, string>();
-
-        var allRows = _context.FirePsgStats.ToList();
-
-        foreach (var row in allRows)
-        {
-            string key = null;
-            if (row.Isitog == 0 && row.PchId.HasValue)
-            {
-                // Лист: ключ = код ПЧ (как строка)
-                key = row.PchId.Value.ToString();
-            }
-            else if (row.Isitog == 1)
-            {
-                // Итог: ключ = ПСГ + "_" + категория (очищенная)
-                var psg = row.Псг?.Trim();
-                var category = row.Category?.Trim();
-                if (!string.IsNullOrEmpty(psg) && !string.IsNullOrEmpty(category))
-                {
-                    // Удаляем "в т.ч.", "по" и лишние пробелы
-                    category = CleanCategory(category);
-                    key = $"{psg}_{category}";
-                }
-            }
-
-            if (!string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(row.RowId1))
-            {
-                // Если ключ уже есть, можно перезаписать (последняя запись), или проверить конфликт
-                if (!map.ContainsKey(key))
-                    map[key] = row.RowId1;
-            }
-        }
-
-        return map;
-    }
-
-    // Вспомогательный метод для очистки категории
-    private string CleanCategory(string category)
-    {
-        if (string.IsNullOrEmpty(category)) return category;
-
-        // Удаляем "в т.ч." и "по" (регистронезависимо)
-        var cleaned = category;
-        cleaned = cleaned.Replace("в т.ч.", "", StringComparison.OrdinalIgnoreCase);
-        cleaned = cleaned.Replace(" по ", "", StringComparison.OrdinalIgnoreCase);
-
-        // Заменяем множественные пробелы на один
-        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", " ");
-
-        // Обрезаем пробелы в начале и конце
-        cleaned = cleaned.Trim();
-
-        // Если очищенная строка пуста, возвращаем исходную (или что-то по умолчанию)
-        if (string.IsNullOrEmpty(cleaned))
-            return category.Trim();
-
-        return cleaned;
-    }
     // -------------------------------------------
     // 3.6 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // -------------------------------------------
@@ -450,6 +308,22 @@ public class PivotTreeBuilder
             }
         }
         return false;
+    }
+
+    private string GetPsgNameForNode(ReportNode node)
+    {
+        int? currentId = node.ParentId;
+        while (currentId.HasValue && currentId != 0)
+        {
+            if (_psgDict.TryGetValue(currentId.Value, out var psg))
+            {
+                if (psg.Isitog == 1)
+                    return psg.Displayname ?? psg.Name ?? "ПСГ";
+                currentId = psg.Parent;
+            }
+            else break;
+        }
+        return "Без ПСГ";
     }
 
     Dictionary<string, ColumnConfig> columnConfigs;
@@ -568,26 +442,6 @@ public class PivotTreeBuilder
     }
 
 
-    //public class ReportNode
-    //{
-    //    public int Id { get; set; }
-    //    public string Name { get; set; }
-    //    public string Category { get; set; }
-    //    public int ParentId { get; set; }
-    //    public List<ReportNode> Children { get; set; } = new List<ReportNode>();
-    //    public string RowId { get; set; }  // Id строки
-
-    //    // RawData: sourceType -> (itemName -> (fieldName -> value))
-    //    public Dictionary<string, Dictionary<string, Dictionary<string, decimal>>> RawData { get; set; }
-    //        = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>();
-    //    //RawData = new Dictionary<string, Dictionary<string, decimal>>()
-    //    // Признак участия в территориальном итоге (по умолчанию true)
-    //    public bool IncludeInTerritorial { get; set; } = true;
-    //}
-
-    // ============================================================
-    // 1. РАСШИРЕННЫЙ КЛАСС PivotRow (все поля грида)
-    // ============================================================
     public class PivotRow
     {
         // --- Иерархия ---
@@ -595,7 +449,6 @@ public class PivotTreeBuilder
         public string ПЧ { get; set; }
         public string Category { get; set; }
         public int PchId { get; set; }
-        public string RowId1 { get; set; }   // 14-символьный идентификатор (как в FirePsgStat)
         public int? Parent { get; set; }
         public int Norder { get; set; }
         public int Isitog { get; set; }
@@ -695,8 +548,7 @@ public class PivotTreeBuilder
         // Datafilled – булево (показывает, заполнена ли строка)
         public bool Datafilled { get; set; }
 
-        // RowId (из таблицы)
-        public string RowId { get; set; }  // может дублироваться с RowId1
+
     }
 
 
