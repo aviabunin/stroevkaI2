@@ -21,7 +21,7 @@ public class PivotTreeBuilder
             .Where(p => p.Old == true) // возможно, только актуальные
             .Where(p=>!p.Garnizon.Contains("итоги"))
             .ToList();
-
+     
         // 2. Загружаем сырые данные для листьев
         var sredstvaList = _context.Sredstvas.ToList();
         var sostavList = _context.Sostavs.ToList();
@@ -73,7 +73,7 @@ public class PivotTreeBuilder
             if (sredstvaBySubdiv.ContainsKey(psg.Id))
             {
                 var sredstvaForNode = sredstvaBySubdiv[psg.Id];
-                var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();
+                var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();// Пока только sredstva, Остальные потом
                 foreach (var s in sredstvaForNode)
                 {
                     var fields = new Dictionary<string, decimal>
@@ -84,7 +84,7 @@ public class PivotTreeBuilder
                     };
                     sredstvaDict[s.NameSredstvo] = fields;
                 }
-                node.RawData["sredstva"] = sredstvaDict;
+                node.RawData["sredstva"] = sredstvaDict;  // Аналог окна средств - имя, поля
             }
 
             // Аналогично для Sostav, Sizod, Penas, Kostyms...
@@ -138,6 +138,9 @@ public class PivotTreeBuilder
     {
         if (rootNode == null)
             rootNode = BuildTree();
+
+        //Инициализируем конфиги всех колонок
+        InitializeColumnConfigs();
 
         var result = new List<PivotRow>();
 
@@ -207,6 +210,9 @@ public class PivotTreeBuilder
         var rows = new List<PivotRow>();
         foreach (var categoryRule in levelConfig.Categories)
         {
+
+            // Если нет в списке итогов - пропускаем
+
             var row = new PivotRow
             {
                 ПСГ = isTerritorial ? "Территориальный" : node.Name,
@@ -250,10 +256,13 @@ public class PivotTreeBuilder
             return 0;
         }
 
-        // Иначе суммируем детей
+        // Иначе суммируем детей   ВОЗМОЖНО ЛЕГЧЕ НЕ РАСКРУЧИВАТЬ ДЕРЕВО, А СДЕЛАТЬ 3 ПРОЦЕДУРЫ - ДЛЯ ЛИСТА, ПСГ , ТЕРРИТОРИАЛЬНОГО
+        // Для категорий ВСЕГО или ГПС - везде одинаково - проще
+        // Для остальных посмотреть
+
         foreach (var child in node.Children)
         {
-            // Для территориального уровня исключаем некоторые узлы (флаг IncludeInTerritorial)
+            // Для территориального уровня исключаем некоторые узлы (флаг IncludeInTerritorial) - ИЛИКАК ТО ЕЩЁ ВРОДЕ ВИДЕЛ - В ВИДЕ УСЛОВИЯ
             if (levelConfig.LevelId == "territorial" && !child.IncludeInTerritorial)
                 continue;
 
@@ -692,3 +701,78 @@ public class PivotTreeBuilder
 
 
 }
+// АСФ: 1889 - асф итоги территориальный, то только 1 строка из Прионежского района. 
+
+
+//private List<psgdata> подчиненныеИтога(psgdata корень)
+//{
+//    if (корень.id == 1889)
+//    {
+//        List<psgdata> asfList = new List<psgdata>();
+//        psgdata asfPetro = mainForm.context.psgdatas.Where(c => c.id == 1793).FirstOrDefault();
+//        asfList.Add(asfPetro);
+//        return asfList;
+//    }
+//    //List<psgdata> lll = new List<psgdata>();
+//    //    psgdata родитель = корень;
+
+//    List<psgdata> lst1 = new List<psgdata>();
+//    List<psgdata> lst2;
+
+//    #region Если это итоги то родитель - это гарнизон территориальный или местный
+//    psgdata родитель = корень;
+//    if (корень.garnizon.Contains("итоги"))
+//        родитель = корень.psgdata2;
+//    else
+//        родитель = корень;
+//    List<psgdata> lst = родитель.psgdata1.Where(c => c.old).ToList();
+
+//    #endregion
+//    #region Формируем список подчиненных -> lst1      ИСКЛЮЧАЕМ ВСЕ СТРОКИ КОТОРЫЕ СОДЕРЖАТ В НАЗВАНИИ ПОДСТРОКУ итоги
+//    if (родитель.id != 11)//tpsg)
+//        lst1 = lst.Where(c => !c.garnizon.Contains("итоги")).ToList(); //Если не корневой, то просто подчиненные -> в список  ЭТО ДЛЯ    ТЕРРИТОРИАЛЬНОГО ГАРНИЗОНА
+//    else
+//    {
+//        foreach (psgdata p in lst)
+//            lst1.AddRange(p.psgdata1.Where(c => !c.garnizon.Contains("итоги"))); // если корневой, то у всех дочерних складываем в один списки подчиненных   ВКЛЮЧАЕМ ВСЕ СТРОКИ 
+//    }
+//    #endregion
+//    #region Теперь выделяем одну из частей списка - для "ГПС" (т.е. ФПС или ППС) или "другие"  -> lst2
+//    if (корень.garnizon.Contains("ГПС"))
+//        lst2 = lst1.Where(c => (c.garntype.Contains("ФПС")) || (c.garntype.Contains("ППС"))).ToList();
+//    else if (корень.garnizon.Contains("ЧПО"))
+//        lst2 = lst1.Where(c => c.garntype.Contains("ЧПО")).ToList();
+//    else if (корень.garnizon.Contains("ФПС"))
+//        lst2 = lst1.Where(c => (c.garntype.Contains("ФПС") || (c.garnizon.Trim() == "ПЧ-75")) && (c.parent != 1744)).ToList();
+//    else if (корень.garnizon.Contains("другие") || (корень.garnizon.Contains("ВПО")))
+//    {
+//        if (корень.parent != 11)
+//            lst2 = lst1.Where(c => (!c.garntype.Contains("ФПС")) && (!c.garntype.Contains("ППС"))).ToList();
+//        else
+//        {
+//            if (корень.garnizon.Contains("ВПО"))
+//                lst2 = lst1.Where(c => (c.garntype.Contains("ВПО"))).ToList();
+//            else
+//            {
+//                lst2 = lst1.Where(c => (!c.garntype.Contains("ФПС")) && (!c.garntype.Contains("ППС")) && (!c.garntype.Contains("ВПО"))).ToList();
+//                lst2 = lst2.Where(c => !c.garntype.Contains("ЧПО")).ToList();
+//            }
+
+//        }
+
+//    }
+//    else
+//        lst2 = lst1;
+
+
+//    //else if (корень.garnizon.Contains("другие"))
+//    //    lst2 = lst1.Where(c => (!c.garntype.Contains("ФПС")) && (!c.garntype.Contains("ППС"))).ToList();
+//    //else
+//    //    lst2 = lst1;
+
+
+//    #endregion
+//    List<psgdata> lst3 = lst2.Where(c => c.old && !c.garnizon.Contains("АСФ")).ToList();
+//    return lst3;// lst2.Where(c => c.old).ToList();
+
+//}

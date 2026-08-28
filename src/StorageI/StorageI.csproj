@@ -19,4 +19,9 @@
     <PackageReference Include="MySql.EntityFrameworkCore" Version="6.0.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Database\Views\" />
+    <Folder Include="Database\Tables\" />
+  </ItemGroup>
+
 </Project>

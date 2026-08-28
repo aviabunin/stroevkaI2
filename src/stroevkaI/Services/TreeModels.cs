@@ -7,12 +7,12 @@ namespace stroevkaI.Models
     /// </summary>
     public  class ReportNode
     {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public string Category { get; set; }
-        public int ParentId { get; set; }
-        public List<ReportNode> Children { get; set; } = new List<ReportNode>();
-        public string RowId;
+        public int Id { get; set; }                             // Id ПЧ/ПСГ
+        public string Name { get; set; }                        // Наименование 
+        public string Category { get; set; }                    // ППС,ФПС, ДПО - для листьев gps,main...  для внутр узлов
+        public int ParentId { get; set; }                       //  Id родителя
+        public List<ReportNode> Children { get; set; } = new List<ReportNode>();  // дочки
+        public string RowId;                                    //  Id строки грида - 14 символов
 
         // RawData: sourceType -> (itemName -> (fieldName -> value))
         public Dictionary<string, Dictionary<string, Dictionary<string, decimal>>> RawData { get; set; }
@@ -23,7 +23,7 @@ namespace stroevkaI.Models
     }
 
     /// <summary>
-    /// Узел ПСГ
+    /// Узел ПСГ  not used yet
     /// </summary>
     public class PsgNode : ReportNode
     {
@@ -31,7 +31,7 @@ namespace stroevkaI.Models
     }
 
     /// <summary>
-    /// Узел ПЧ
+    /// Узел ПЧ   - not used
     /// </summary>
     public class PchNode : ReportNode
     {
