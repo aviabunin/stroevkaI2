@@ -12,33 +12,33 @@ public class PivotTreeBuilder
 {
     Dictionary<int, Psgstat> _psgDict;
     List<PsgTotalRow> psg_total_rows;
-    
+
 
     ReportNode root = null;
     public static stroevkaContext _context = new stroevkaContext();
 
     public PivotTreeBuilder()
     {
-       
+
     }
 
     public ReportNode BuildTree()
     {
         // 1. Загружаем все узлы из psgstat (только используемые, если used=1)
-        var allNodes = _context.Psgstats
-            .Include(p => p.Sredstvas)
-            .Include(p => p.Sostavs)
-            .Include(p => p.Sizods)
-            .Include(p => p.Penas)
-            .Include(p => p.Kostyms)
-            .Include(p => p.Waters)
-            .Include(p => p.Contacts)
-            .Where(p => p.Used == 1)
-            .ToList();
-
         //var allNodes = _context.Psgstats
-        //    .Where(p => p.Used == 1) // если есть поле used, иначе уберите Where
+        //    .Include(p => p.Sredstvas)
+        //    .Include(p => p.Sostavs)
+        //    .Include(p => p.Sizods)
+        //    .Include(p => p.Penas)
+        //    .Include(p => p.Kostyms)
+        //    .Include(p => p.Waters)
+        //    .Include(p => p.Contacts)
+        //    .Where(p => p.Used == 1)
         //    .ToList();
+
+        var allNodes = _context.Psgstats
+            .Where(p => p.Used == 1) // если есть поле used, иначе уберите Where
+            .ToList();
 
         // Заполняем словарь для быстрого доступа по Id
         _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
@@ -52,8 +52,8 @@ public class PivotTreeBuilder
         var sizodList = _context.Sizods.ToList();
         var penasList = _context.Penas.ToList();
         var kostymsList = _context.Kostyms.ToList();
-        var watersList = _context.Waters.ToList();
-        var contactsList = _context.Contacts.ToList();
+        //var watersList = _context.Waters.ToList();
+        //var contactsList = _context.Contacts.ToList();
 
         // Группируем данные по subdivision_id (Id узла)
         var sredstvaBySubdiv = sredstvaList

@@ -21,7 +21,6 @@ namespace StorageI.ModelsStroevkaMySql
         public string? Excel { get; set; }
         public int Norder { get; set; }
 
-        public virtual Psgstat? Subdivision1 { get; set; }
         public virtual Psgdatum? SubdivisionNavigation { get; set; }
     }
 }

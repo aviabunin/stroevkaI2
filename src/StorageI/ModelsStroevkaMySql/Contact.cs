@@ -23,7 +23,7 @@ namespace StorageI.ModelsStroevkaMySql
         public int Norder { get; set; }
         public int Karaul { get; set; }
 
-        public virtual Psgstat? Subdivision1 { get; set; }
+        //public virtual Psgstat? Subdivision1 { get; set; }
         public virtual Psgdatum? SubdivisionNavigation { get; set; }
     }
 }
