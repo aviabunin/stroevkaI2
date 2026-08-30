@@ -32,13 +32,13 @@ namespace StorageI.ModelsStroevkaMySql
         public DateTime Mdate { get; set; }
 
         //public virtual Psgstat? ParentNavigation { get; set; }
-        public virtual ICollection<Contact> Contacts { get; set; }
-        public virtual ICollection<Psgstat> InverseParentNavigation { get; set; }
-        public virtual ICollection<Kostym> Kostyms { get; set; }
-        public virtual ICollection<Pena> Penas { get; set; }
-        public virtual ICollection<Sizod> Sizods { get; set; }
-        public virtual ICollection<Sostav> Sostavs { get; set; }
-        public virtual ICollection<Sredstva> Sredstvas { get; set; }
-        public virtual ICollection<Water> Waters { get; set; }
+        //public virtual ICollection<Contact> Contacts { get; set; }
+        //public virtual ICollection<Psgstat> InverseParentNavigation { get; set; }
+        //public virtual ICollection<Kostym> Kostyms { get; set; }
+        //public virtual ICollection<Pena> Penas { get; set; }
+        //public virtual ICollection<Sizod> Sizods { get; set; }
+        //public virtual ICollection<Sostav> Sostavs { get; set; }
+        //public virtual ICollection<Sredstva> Sredstvas { get; set; }
+        //public virtual ICollection<Water> Waters { get; set; }
     }
 }
