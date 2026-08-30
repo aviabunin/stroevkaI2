@@ -49,7 +49,7 @@ public class PivotTreeBuilder
 
         var sredstvaList = _context.Sredstvas.ToList();
         var sostavList = _context.Sostavs.ToList();
-        //var sizodList = _context.Sizods.ToList();
+        var sizodList = _context.Sizods.ToList();
         //var penasList = _context.Penas.ToList();
         //var kostymsList = _context.Kostyms.ToList();
         //var watersList = _context.Waters.ToList();
