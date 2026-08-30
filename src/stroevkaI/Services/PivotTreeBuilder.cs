@@ -24,29 +24,14 @@ public class PivotTreeBuilder
 
     public ReportNode BuildTree()
     {
-        // 1. Загружаем все узлы из psgstat (только используемые, если used=1)
-        //var allNodes = _context.Psgstats
-        //    .Include(p => p.Sredstvas)
-        //    .Include(p => p.Sostavs)
-        //    .Include(p => p.Sizods)
-        //    .Include(p => p.Penas)
-        //    .Include(p => p.Kostyms)
-        //    .Include(p => p.Waters)
-        //    .Include(p => p.Contacts)
-        //    .Where(p => p.Used == 1)
-        //    .ToList();
-
-        var allNodes = _context.Psgstats
-            .Where(p => p.Used == 1) // если есть поле used, иначе уберите Where
+       var allNodes = _context.Psgstats
+            .Where(p => p.Used == 1) 
             .ToList();
 
         // Заполняем словарь для быстрого доступа по Id
         _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
 
         // 2. Загружаем сырые данные для листьев (как было)
-
-
-
         var sredstvaList = _context.Sredstvas.ToList();
         var sostavList = _context.Sostavs.ToList();
         var sizodList = _context.Sizods.ToList();
@@ -135,13 +120,13 @@ public class PivotTreeBuilder
         var result = new List<PivotRow>();
 
         // 1. Листья (ПЧ) – это узлы с IsItog == 0
-        var leaves = GetAllLeaves(rootNode); // или можно отфильтровать по IsItog == 0
+        var leaves = GetAllLeaves(rootNode).Where(c=>c.Isitog==0).ToList(); // или можно отфильтровать по IsItog == 0
         foreach (var leaf in leaves)
         {
             var row = CreateLeafRow(leaf);
             result.Add(row);
         }
-
+        var psgNodes = rootNode.Children.Where(c => c.Children.Count != 0).ToList();
         // 2. Итоги по ПСГ (для каждой категории) – узлы с IsItog == 1, но не корень
         foreach (var psgNode in rootNode.Children) // дети корня – районные ПСГ
         {
