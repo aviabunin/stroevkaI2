@@ -12,9 +12,8 @@ public class PivotTreeBuilder
 {
     Dictionary<int, Psgstat> _psgDict;
     List<PsgTotalRow> psg_total_rows;
-
-
     ReportNode root = null;
+
     public static stroevkaContext _context = new stroevkaContext();
 
     public PivotTreeBuilder()
@@ -106,42 +105,190 @@ public class PivotTreeBuilder
         return root;
     }
 
-
     // -------------------------------------------
     // 3.4 ГЕНЕРАЦИЯ СТРОК PivotRow
     // -------------------------------------------
     public List<PivotRow> GeneratePivotRows(ReportNode rootNode)
     {
+        #region Инициализация колонок и расчёт строк для листьев (ПЧ)
         if (rootNode == null)
             rootNode = BuildTree();
 
         InitializeColumnConfigs();
-
         var result = new List<PivotRow>();
 
-        // 1. Листья (ПЧ) – это узлы с IsItog == 0
-        var leaves = GetAllLeaves(rootNode).Where(c=>c.Isitog==0).ToList(); // или можно отфильтровать по IsItog == 0
+        // 1. Листья (ПЧ)
+        var leaves = GetAllLeaves(rootNode);
         foreach (var leaf in leaves)
+            result.Add(CreateLeafRow(leaf));
+        #endregion
+
+        #region 2. Итоговые строки для районных ПСГ
+        var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
+        var allPsgRows = new List<PivotRow>();
+        foreach (var psgNode in psgNodes)
         {
-            var row = CreateLeafRow(leaf);
-            result.Add(row);
-        }
-        var psgNodes = rootNode.Children.Where(c => c.Children.Count != 0).ToList();
-        // 2. Итоги по ПСГ (для каждой категории) – узлы с IsItog == 1, но не корень
-        foreach (var psgNode in rootNode.Children) // дети корня – районные ПСГ
-        {
-            var psgRows = CreateSummaryRows(psgNode, PivotConfigs.PsgLevelConfig, isTerritorial: false);
+            var psgRows = ComputePsgSummaryRows(psgNode);
             result.AddRange(psgRows);
+            allPsgRows.AddRange(psgRows);
+        }
+        #endregion
+
+        #region 3. Территориальные итоги  { "ВПО", "ЧПО", "другие", "АСФ" }
+        var territorialRows = new List<PivotRow>();
+
+         //  3.1. Обычные категории (ВПО, ЧПО, другие, АСФ) ---
+        foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
+        {
+            var rows = GetPsgRowsByCategory(allPsgRows, cat);
+            var row = CreateTerritorialRow(rootNode, cat, rows);
+            if (row != null) territorialRows.Add(row);
         }
 
-        // 3. Территориальные итоги – корень
-        var territorialRows = CreateSummaryRows(rootNode, PivotConfigs.TerritorialLevelConfig, isTerritorial: true);
-        result.AddRange(territorialRows);
+        #endregion
 
+        #region ГПС, ФПС - территориальный
+        // --- 3.2. ГПС ---
+        var gpsRows = GetPsgRowsByCategory(allPsgRows, "ГПС");
+        var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
+        if (gpsRow != null) territorialRows.Add(gpsRow);
+
+
+        // --- 3.3. ФПС (особая логика) ---
+        var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);
+        if (fpsRow != null) territorialRows.Add(fpsRow);
+        #endregion
+
+        #region 3.4. «всего» (ГПС + другие + ЧПО + ВПО) ---
+        var rowsForTotal = territorialRows
+            .Where(r => r.Category == "ГПС" || r.Category == "другие" || r.Category == "ЧПО" || r.Category == "ВПО")
+            .ToList();
+        var totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
+        if (totalRow != null) territorialRows.Add(totalRow);
+
+        result.AddRange(territorialRows);
+        #endregion
         return result;
     }
+    private PivotRow CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow> rowsToSum)
+    {
+        // Если список пуст – возвращаем null (строку не создаём)
+        if (rowsToSum == null || !rowsToSum.Any())
+            return null;
 
-    // Создание строки для листа
+        var row = new PivotRow
+        {
+            ПСГ = "Территориальный",
+            ПЧ = (categoryName == "ГПС" || categoryName == "всего") ? "всего" : "в т.ч. " + categoryName,
+            Category = categoryName,
+            PchId = -rootNode.Id,
+            Parent = 0,
+            Isitog = 1,
+        };
+
+        // Суммируем все числовые свойства
+        foreach (var prop in typeof(PivotRow).GetProperties())
+        {
+            if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
+            {
+                decimal total = 0;
+                foreach (var r in rowsToSum)
+                    total += (decimal)prop.GetValue(r);
+                prop.SetValue(row, total);
+            }
+        }
+
+        // Для итоговых строк эти поля пустые
+        row.Nachkar = "";
+        row.Datafilled = false;
+        return row;
+    }
+    private List<PivotRow> GetPsgRowsByCategory(List<PivotRow> allPsgRows, string category)
+    {
+        return allPsgRows.Where(r => r.Category == category).ToList();
+    }
+    private PivotRow ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow> allPsgRows)
+    {
+        // 1. Берём все строки ПСГ с категорией "ФПС"
+        var fpsRows = allPsgRows.Where(r => r.Category == "ФПС").ToList();
+
+        // 2. Исключаем строки, принадлежащие Прионежскому ПСГ
+        //    Предположим, что в allPsgRows есть поле ПСГ (имя или Id) – мы можем отфильтровать
+        //    Например, если мы храним имя ПСГ в свойстве ПСГ строки:
+        fpsRows = fpsRows.Where(r => r.ПСГ != "Прионежский").ToList();
+
+        // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
+        //    Находим лист ПЧ-75
+        var pch75Leaf = GetAllLeaves(rootNode).FirstOrDefault(l => l.Name.Contains("ПЧ-75") || l.Name.Contains("75"));
+        if (pch75Leaf != null)
+        {
+            // Создаём строку для листа (как в CreateLeafRow) и добавляем
+            var leafRow = CreateLeafRow(pch75Leaf);
+            // Если такая строка ещё не добавлена (проверяем по Id), добавляем
+            if (!fpsRows.Any(r => r.PchId == leafRow.PchId))
+                fpsRows.Add(leafRow);
+        }
+
+        // 4. Создаём территориальную строку для ФПС
+        return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
+    }
+    private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
+    {
+        var rows = new List<PivotRow>();
+        var leaves = GetAllLeaves(psgNode);
+        var leavesByType = leaves
+            .Where(l => !string.IsNullOrEmpty(l.Category))
+            .Where(n => n.Isitog!=1)
+            .GroupBy(l => l.Category)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // 1. ГПС
+        var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
+        rows.Add(CreateCategoryRow(psgNode, "ГПС", gpsLeaves));
+
+        // 2. другие
+        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" ).SelectMany(kv => kv.Value).ToList();
+        rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
+
+        // 3. всего
+        rows.Add(CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList()));
+
+        // 4. ВПО, ЧПО, АСФ
+        foreach (var cat in new[] { "ВПО", "ЧПО", "АСФ" })
+        {
+            if (leavesByType.TryGetValue(cat, out var catLeaves))
+                rows.Add(CreateCategoryRow(psgNode, cat, catLeaves));
+        }
+
+        return rows;
+    }
+    private PivotRow CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
+    {
+        var row = new PivotRow
+        {
+            ПСГ = psgNode.Name,
+            ПЧ = categoryName, // можно по-разному
+            Category = categoryName,
+            PchId = -psgNode.Id,
+            Parent = psgNode.ParentId,
+            Isitog = 1,
+        };
+
+        // Для каждой колонки суммируем значения по листьям
+        foreach (var kv in columnConfigs)
+        {
+            var propName = kv.Key;
+            var config = kv.Value;
+            decimal total = 0;
+            foreach (var leaf in leaves)
+            {
+                total += ComputeLeafValue(leaf, config);
+            }
+            SetProperty(row, propName, total);
+        }
+
+        return row;
+    }
     private PivotRow CreateLeafRow(ReportNode leaf)
     {
         var row = new PivotRow
@@ -169,41 +316,36 @@ public class PivotTreeBuilder
 
         return row;
     }
-
-    // Создание итоговых строк для узла (ПСГ или территориальный)
-
-    private List<PivotRow> CreateSummaryRows(ReportNode node, LevelConfig levelConfig, bool isTerritorial)
+    private PivotRow CreateTotalRow(ReportNode psgNode, List<PivotRow> rowsToSum)
     {
-        var rows = new List<PivotRow>();
-        foreach (var categoryRule in levelConfig.Categories)
+        var row = new PivotRow
         {
-            var row = new PivotRow
-            {
-                ПСГ = isTerritorial ? "Территориальный" : node.Name,
-                ПЧ = categoryRule.CategoryId == "main" ? "всего" : "в т.ч. " + categoryRule.CategoryId.ToUpper(),
-                Category = categoryRule.CategoryId,
-                PchId = -node.Id, // отрицательный для итогов
-                Parent = node.ParentId == 0 ? (int?)null : node.ParentId,
-                Norder = 0,
-                Isitog = 1,
-            };
+            ПСГ = psgNode.Name,
+            ПЧ = "всего",
+            Category = "всего",
+            PchId = -psgNode.Id,
+            Parent = psgNode.ParentId,
+            Isitog = 1,
+        };
 
-            // Вычисляем значения для колонок
-            foreach (var kv in columnConfigs)
+        // Суммируем все числовые свойства из переданных строк
+        foreach (var prop in typeof(PivotRow).GetProperties())
+        {
+            if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
             {
-                var propName = kv.Key;
-                var config = kv.Value;
-                var value = ComputeNodeValue(node, config, levelConfig, categoryRule.CategoryId);
-                SetProperty(row, propName, value);
+                decimal total = 0;
+                foreach (var r in rowsToSum)
+                    total += (decimal)prop.GetValue(r);
+                prop.SetValue(row, total);
             }
-
-            row.Nachkar = "";
-            row.Datafilled = false;
-
-            rows.Add(row);
         }
-        return rows;
+
+        // Дополнительно можно скопировать текстовые поля (если нужно)
+        // Например, Nachkar, Datafilled – для итогов обычно пустые
+
+        return row;
     }
+    // Создание итоговых строк для узла (ПСГ или территориальный)
 
     private decimal ComputeNodeValue(ReportNode node, ColumnConfig config, LevelConfig levelConfig, string categoryId)
     {
@@ -235,12 +377,11 @@ public class PivotTreeBuilder
         return total;
     }
 
-
     // Получить все листья дерева
     List<ReportNode> GetAllLeaves(ReportNode node)
     {
         var leaves = new List<ReportNode>();
-        if (node.Children.Count == 0)
+        if ((node.Children.Count == 0) && (node.Isitog==0))
             leaves.Add(node);
         else
             foreach (var child in node.Children)
@@ -269,7 +410,6 @@ public class PivotTreeBuilder
         return total;
     }
 
-
     // -------------------------------------------
     // 3.6 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
     // -------------------------------------------
@@ -279,20 +419,6 @@ public class PivotTreeBuilder
         var prop = typeof(PivotRow).GetProperty(propName);
         if (prop != null && prop.CanWrite)
             prop.SetValue(row, Convert.ChangeType(value, prop.PropertyType));
-    }
-
-    private bool IsDatafilled(ReportNode node)
-    {
-        // Проверяем наличие данных в ключевых полях (например, хотя бы одна единица техники > 0)
-        if (node.RawData.TryGetValue("sredstva", out var srcDict))
-        {
-            foreach (var kv in srcDict)
-            {
-                foreach (var f in kv.Value.Values)
-                    if (f > 0) return true;
-            }
-        }
-        return false;
     }
 
     private string GetPsgNameForNode(ReportNode node)
