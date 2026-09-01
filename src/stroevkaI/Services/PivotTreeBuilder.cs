@@ -8,6 +8,7 @@ using StorageI.ModelsStroevkaMySql;
 using stroevkaI.Models;
 using Microsoft.EntityFrameworkCore;
 
+namespace stroevkaI.Services { 
 public class PivotTreeBuilder
 {
     Dictionary<int, Psgstat> _psgDict;
@@ -149,13 +150,15 @@ public class PivotTreeBuilder
 
         #region ГПС, ФПС - территориальный
         // --- 3.2. ГПС ---
-        var gpsRows = GetPsgRowsByCategory(allPsgRows, "ГПС");
+        List<PivotRow> gpsRows = GetPsgRowsByCategory(allPsgRows, "ФПС");
+        var ppsRows = GetPsgRowsByCategory(allPsgRows, "ППС");
+        gpsRows.AddRange(ppsRows);
         var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
         if (gpsRow != null) territorialRows.Add(gpsRow);
 
 
         // --- 3.3. ФПС (особая логика) ---
-        var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);
+        var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);//,result);
         if (fpsRow != null) territorialRows.Add(fpsRow);
         #endregion
 
@@ -179,10 +182,10 @@ public class PivotTreeBuilder
         var row = new PivotRow
         {
             ПСГ = "Территориальный",
-            ПЧ = (categoryName == "ГПС" || categoryName == "всего") ? "всего" : "в т.ч. " + categoryName,
+            ПЧ = categoryName,
             Category = categoryName,
             PchId = -rootNode.Id,
-            Parent = 0,
+            Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
             Isitog = 1,
         };
 
@@ -207,6 +210,24 @@ public class PivotTreeBuilder
     {
         return allPsgRows.Where(r => r.Category == category).ToList();
     }
+    private PivotRow ComputeTerritorialFpsRow1(ReportNode rootNode, List<PivotRow> allPsgRows, List<PivotRow> leavesPivotRows)
+    {
+        // 1. Берём все строки ПСГ с категорией "ФПС"
+        var fpsRows = allPsgRows.Where(r => r.Category == "ФПС").ToList();
+
+        // 2. Исключаем строки, принадлежащие Прионежскому ПСГ
+        //    Предположим, что в allPsgRows есть поле ПСГ (имя или Id) – мы можем отфильтровать
+        //    Например, если мы храним имя ПСГ в свойстве ПСГ строки:
+        fpsRows = fpsRows.Where(r => r.ПСГ != "Прионежский").ToList();
+
+        // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
+        //    Находим лист ПЧ-75
+        //var pch75Leaf = leavesPivotRows.FirstOrDefault(l => l.PchId == 1793);//.Contains("ПЧ-75") || l.Name.Contains("75"));
+        //fpsRows = fpsRows.Add(pch75Leaf);
+        //fpsRows.Add(fpsRows);
+        // 4. Создаём территориальную строку для ФПС
+        return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
+    }
     private PivotRow ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow> allPsgRows)
     {
         // 1. Берём все строки ПСГ с категорией "ФПС"
@@ -219,7 +240,7 @@ public class PivotTreeBuilder
 
         // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
         //    Находим лист ПЧ-75
-        var pch75Leaf = GetAllLeaves(rootNode).FirstOrDefault(l => l.Name.Contains("ПЧ-75") || l.Name.Contains("75"));
+        var pch75Leaf = GetAllLeaves(rootNode).FirstOrDefault(l => l.Name.Contains("ПЧ-75"));
         if (pch75Leaf != null)
         {
             // Создаём строку для листа (как в CreateLeafRow) и добавляем
@@ -232,6 +253,7 @@ public class PivotTreeBuilder
         // 4. Создаём территориальную строку для ФПС
         return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
     }
+
     private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
     {
         var rows = new List<PivotRow>();
@@ -242,14 +264,23 @@ public class PivotTreeBuilder
             .GroupBy(l => l.Category)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // 1. ГПС
-        var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
-        rows.Add(CreateCategoryRow(psgNode, "ГПС", gpsLeaves));
+
+        // -1.ФПС
+        var fpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС").SelectMany(kv => kv.Value).ToList();
+        rows.Add(CreateCategoryRow(psgNode, "ФПС", fpsLeaves));
+        // 0. ППС
+        var ppsLeaves = leavesByType.Where(kv => kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
+        rows.Add(CreateCategoryRow(psgNode, "ППС", ppsLeaves));
+        //// 1. ГПС
+        //var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
+        //rows.Add(CreateCategoryRow(psgNode, "ГПС", gpsLeaves));
 
         // 2. другие
-        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" ).SelectMany(kv => kv.Value).ToList();
+        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "ЧПО" && kv.Key != "ВПО" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
         rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
-
+        // 2. други1
+        var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
+        rows.Add(CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves));// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
         // 3. всего
         rows.Add(CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList()));
 
@@ -552,7 +583,7 @@ public class PivotTreeBuilder
         };
     }
 
-
+ }
     public class PivotRow
     {
         // --- Иерархия ---
@@ -661,6 +692,4 @@ public class PivotTreeBuilder
 
 
     }
-
-
 }

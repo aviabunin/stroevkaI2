@@ -8,6 +8,7 @@ using MySql.Data.MySqlClient;
 using stroevkaI.Services;
 using System.ComponentModel;
 using System.Text;
+using stroevkaI.Services;
 
 
 namespace stroevkaI
@@ -200,6 +201,11 @@ namespace stroevkaI
         {
             gridList = FireEquipsPivotRepository.LoadEquipsByPsg(rootPsgName);
             EquipmentDataGridView.DataSource = gridList;
+        }
+        void InitPivotGrid(List<PivotRow> lst)
+        {
+            //gridList = lst;
+            PivotRowGrid.DataSource = lst;
         }
 
         private void refreshGrid(string _psgname)
@@ -464,8 +470,9 @@ namespace stroevkaI
         private void BuildTree() {
             PivotTreeBuilder b = new PivotTreeBuilder();
             Models.ReportNode  root = b.BuildTree();
-            b.GeneratePivotRows(root);
-
+            List<PivotRow> pivotSource  = b.GeneratePivotRows(root);
+            //заменить источник у грида.
+            InitPivotGrid(pivotSource);
         
         }
 
