@@ -238,15 +238,44 @@ public class PivotTreeBuilder
 
             // Суммируем все числовые свойства
             foreach (var prop in typeof(PivotRow).GetProperties())
-        {
-            if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
             {
-                decimal total = 0;
-                foreach (var r in rowsToSum)
-                    total += (decimal)prop.GetValue(r);
-                prop.SetValue(row, total);
+                if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
+                {
+                    decimal total = 0;
+                    var details = new List<DetailItem>();
+
+                    foreach (var r in rowsToSum)
+                    {
+                        var val = (decimal)prop.GetValue(r);
+                        if (val != 0)
+                        {
+                            total += val;
+                            // Используем детали из строки ПСГ (они уже есть)
+                            if (r.CellDetails.TryGetValue(prop.Name, out var subDetails))
+                            {
+                                // Можно добавить префикс с названием ПСГ для ясности
+                                foreach (var d in subDetails)
+                                {
+                                    details.Add(new DetailItem
+                                    {
+                                        Name = $"{r.ПСГ} → {d.Name}",
+                                        Value = d.Value,
+                                        Category = d.Category
+                                    });
+                                }
+                            }
+                            else
+                            {
+                                // Если деталей нет (например, для особых случаев), добавляем строку целиком
+                                details.Add(new DetailItem { Name = $"{r.ПСГ} ({r.ПЧ})", Value = val });
+                            }
+                        }
+                    }
+
+                    prop.SetValue(row, total);
+                    row.CellDetails[prop.Name] = details;
+                }
             }
-        }
 
         // Для итоговых строк эти поля пустые
         row.Nachkar = "";
@@ -362,14 +391,15 @@ public class PivotTreeBuilder
          };
 
             var row = new PivotRow
-        {
-            ПСГ = psgNode.Name,
-            Category = categoryName,
-            PchId = psgNode.Id,
-            Norder = psgNode.Norder,
-            Parent = psgNode.ParentId,
-            Isitog = 1,
-        };
+            {
+                ПСГ = psgNode.Name,
+                Category = categoryName,
+                PchId = psgNode.Id,
+                Norder = psgNode.Norder,
+                Parent = psgNode.ParentId,
+                Isitog = 1,
+            };
+            #region Устанавливаем Norder и ПЧ в зависимости от CategoryName   
             if (categoryName == "всего")
                 row.Norder = psgNode.Norder;
             else
@@ -379,24 +409,36 @@ public class PivotTreeBuilder
             if (displayNames.ContainsKey(categoryName))
                 row.ПЧ = displayNames[categoryName];
             else if(categoryName == "всего")
-                   row.ПЧ = psgNode.Name;
-             else
+                    row.ПЧ = psgNode.Name;
+                else
                 row.ПЧ = "Не определено";
-
+            #endregion
 
 
             // Для каждой колонки суммируем значения по листьям
             foreach (var kv in columnConfigs)
-        {
-            var propName = kv.Key;
-            var config = kv.Value;
-            decimal total = 0;
-            foreach (var leaf in leaves)
             {
-                total += ComputeLeafValue(leaf, config);
+                var propName = kv.Key;
+                var config = kv.Value;
+                decimal total = 0;
+                var details = new List<DetailItem>();//  детали для показа составляющих суммы при наведении мышко
+                foreach (var leaf in leaves)
+                {
+                    var value = ComputeLeafValue(leaf, config);
+                    if (value != 0) // добавляем только ненулевые, чтобы не загромождать
+                    {
+                        total += value;
+                        details.Add(new DetailItem
+                        {
+                            Name = leaf.Name,
+                            Value = value,
+                            Category = leaf.Category
+                        });
+                    }
+                }
+                SetProperty(row, propName, total);
+                row.CellDetails[propName] = details;
             }
-            SetProperty(row, propName, total);
-        }
 
         return row;
     }
@@ -440,22 +482,41 @@ public class PivotTreeBuilder
             Isitog = 1,
         };
 
-        // Суммируем все числовые свойства из переданных строк
-        foreach (var prop in typeof(PivotRow).GetProperties())
-        {
-            if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
+            // Суммируем все числовые свойства из переданных строк
+            foreach (var prop in typeof(PivotRow).GetProperties())
             {
-                decimal total = 0;
-                foreach (var r in rowsToSum)
-                    total += (decimal)prop.GetValue(r);
-                prop.SetValue(row, total);
+                if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
+                {
+                    decimal total = 0;
+                    var details = new List<DetailItem>();
+
+                    foreach (var r in rowsToSum)
+                    {
+                        var val = (decimal)prop.GetValue(r);
+                        if (val != 0)
+                        {
+                            total += val;
+                            // Добавляем детали из исходной строки (они уже содержат список ПЧ)
+                            if (r.CellDetails.TryGetValue(prop.Name, out var subDetails))
+                            {
+                                details.AddRange(subDetails);
+                            }
+                            else
+                            {
+                                // если деталей нет, добавляем саму строку как единый элемент
+                                details.Add(new DetailItem { Name = r.ПЧ, Value = val });
+                            }
+                        }
+                    }
+
+                    prop.SetValue(row, total);
+                    row.CellDetails[prop.Name] = details;
+                }
             }
-        }
+                // Дополнительно можно скопировать текстовые поля (если нужно)
+                // Например, Nachkar, Datafilled – для итогов обычно пустые
 
-        // Дополнительно можно скопировать текстовые поля (если нужно)
-        // Например, Nachkar, Datafilled – для итогов обычно пустые
-
-        return row;
+                return row;
     }
     // Создание итоговых строк для узла (ПСГ или территориальный)
 
@@ -785,6 +846,19 @@ public class PivotTreeBuilder
         // Datafilled – булево (показывает, заполнена ли строка)
         public bool Datafilled { get; set; }
 
+        /// <summary>
+        /// Детали для каждой колонки (ключ – имя свойства/колонки, значение – список объектов с именем и значением)
+        /// </summary>
+        public Dictionary<string, List<DetailItem>> CellDetails { get; set; } = new Dictionary<string, List<DetailItem>>();
 
+    }
+    /// <summary>
+    /// Класс для хранения информации о составляющей суммы
+    /// </summary>
+    public class DetailItem
+    {
+        public string Name { get; set; }   // например, "ПЧ-1" или "ПСГ Беломорский"
+        public decimal Value { get; set; }
+        public string Category { get; set; } // опционально, для группировки
     }
 }

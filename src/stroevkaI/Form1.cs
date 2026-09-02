@@ -844,5 +844,49 @@ namespace stroevkaI
         {
 
         }
+
+        private string BuildTooltipText(List<DetailItem> details, string columnName)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Составляющие для колонки «{columnName}»:");
+            sb.AppendLine("---------------------------");
+            foreach (var d in details.OrderByDescending(d => d.Value))
+            {
+                sb.AppendLine($"{d.Name}: {d.Value:F0}");
+            }
+            sb.AppendLine("---------------------------");
+            sb.Append($"ИТОГО: {details.Sum(d => d.Value):F0}");
+            return sb.ToString();
+        }
+
+        private void PivotRowGrid_CellToolTipTextNeeded(object sender, DataGridViewCellToolTipTextNeededEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            var grid = sender as DataGridView;
+            var row = grid.Rows[e.RowIndex];
+
+            // Проверяем, что строка привязана к объекту PivotRow
+            if (row.DataBoundItem is PivotRow pivotRow)
+            {
+                // Получаем имя свойства, связанного с этой колонкой
+                var column = grid.Columns[e.ColumnIndex];
+                string columnName = column.DataPropertyName;
+                if (string.IsNullOrEmpty(columnName))
+                    columnName = column.Name; // запасной вариант
+
+                // Пытаемся получить детали для этой колонки
+                if (pivotRow.CellDetails.TryGetValue(columnName, out var details) && details.Any())
+                {
+                    // Формируем текст подсказки
+                    e.ToolTipText = BuildTooltipText(details, columnName);
+                }
+                else
+                {
+                    // Если деталей нет — показываем стандартную подсказку (или ничего)
+                    e.ToolTipText = null; // не показывать дополнительную подсказку
+                }
+            }
+        }
     }
 }
