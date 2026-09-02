@@ -37,12 +37,16 @@ namespace stroevkaI
         private List<Pch> cachedPchList;
         private List<Psg> cachedPsgList;
         private BackgroundWorker compareAllWorker;
+
+        List<PivotRow> pivotSource;
+
         #endregion
 
         #region События формы
         public Form1()
         {
             InitializeComponent();
+            BuildTree();
             this.EquipmentDataGridView.AutoGenerateColumns = false;
             //this.btnTools.Sp.sp = true;
 
@@ -90,8 +94,10 @@ namespace stroevkaI
             rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
 
             EquipmentDataGridView.AutoGenerateColumns = false;
-            InitGrid();
 
+            InitGrid();
+      
+            InitPivotGrid(rootPsgName);
             // Подписываемся на события грида
             EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
             EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
@@ -172,6 +178,7 @@ namespace stroevkaI
             Settings.Default.Save();
 
             refreshGrid(rootPsgName);
+            InitPivotGrid(rootPsgName);
             UpdateStatus($"Выбран гарнизон: {rootPsgName}");
         }
         #endregion
@@ -202,9 +209,11 @@ namespace stroevkaI
             gridList = FireEquipsPivotRepository.LoadEquipsByPsg(rootPsgName);
             EquipmentDataGridView.DataSource = gridList;
         }
-        void InitPivotGrid(List<PivotRow> lst)
+        void InitPivotGrid(string rootName)
         {
-            //gridList = lst;
+            var lst = PivotTreeBuilder.GetPsgChildes(rootName).OrderBy(c => c.Norder).ToList();
+            if (lst == null)
+                return;
             PivotRowGrid.DataSource = lst;
         }
 
@@ -214,6 +223,7 @@ namespace stroevkaI
 
             gridList = FireEquipsPivotRepository.LoadEquipsByPsg(_psgname);
             EquipmentDataGridView.DataSource = gridList;
+            InitPivotGrid(_psgname);
             HighlightDatafilledRows();
         }
 
@@ -467,13 +477,12 @@ namespace stroevkaI
                 BuildTree();
             }
         }
+        
+        //Строим дерево узлов и дерево PivotRows
         private void BuildTree() {
             PivotTreeBuilder b = new PivotTreeBuilder();
             Models.ReportNode  root = b.BuildTree();
-            List<PivotRow> pivotSource  = b.GeneratePivotRows(root);
-            //заменить источник у грида.
-            InitPivotGrid(pivotSource);
-        
+            pivotSource  = b.GeneratePivotRows(root);        
         }
 
 

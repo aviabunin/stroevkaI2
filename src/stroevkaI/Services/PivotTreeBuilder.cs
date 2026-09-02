@@ -1,21 +1,17 @@
-﻿//Удаляем методы:
-//    getCategory()(теперь категория берётся из psgstat.garntype)
-
-//    CleanCategory()
-//    FindParentPsg(), FindNodeById()(если не нужны для других целей)
-
-using StorageI.ModelsStroevkaMySql;
+﻿using StorageI.ModelsStroevkaMySql;
 using stroevkaI.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace stroevkaI.Services { 
 public class PivotTreeBuilder
 {
+   static  List<PivotRow> allPivotRows;
     Dictionary<int, Psgstat> _psgDict;
     List<PsgTotalRow> psg_total_rows;
     ReportNode root = null;
+    static Dictionary<int, List<PivotRow>> psgChildes;
 
-    public static stroevkaContext _context = new stroevkaContext();
+        public static stroevkaContext _context = new stroevkaContext();
 
     public PivotTreeBuilder()
     {
@@ -52,10 +48,12 @@ public class PivotTreeBuilder
             var node = new ReportNode
             {
                 Id = psg.Id,
-                Name = psg.Name ?? psg.Displayname ?? psg.Name, // используем подходящее поле
+                Name = psg.Name, // используем подходящее поле
+                displayName = psg.Displayname, // используем подходящее поле
                 Category = psg.Garntype ?? "",
                 ParentId = psg.Parent ?? 0,
                 Isitog = psg.Isitog ?? 0,
+                Norder = (int)psg.Norder,
                 RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
             };
 
@@ -86,12 +84,8 @@ public class PivotTreeBuilder
         ReportNode root = null;
         foreach (var node in nodeDict.Values)
         {
-            if (node.ParentId == 0 || node.ParentId == node.Id)
-            {
-                // Корень – обычно id=1 (территориальный)
-                if (node.Id == 1) root = node;
-                continue;
-            }
+            if (node.Id == 11) root = node;
+         
             if (nodeDict.ContainsKey(node.ParentId))
             {
                 var parent = nodeDict[node.ParentId];
@@ -120,17 +114,31 @@ public class PivotTreeBuilder
 
         // 1. Листья (ПЧ)
         var leaves = GetAllLeaves(rootNode);
-        foreach (var leaf in leaves)
-            result.Add(CreateLeafRow(leaf));
-        #endregion
+        foreach (ReportNode leaf in leaves)
+            result.Add(CreateLeafRow(leaf)); // проверим что есть idPsg и сделаем словарь <idPsg,List<pivotRows>>
+                                             // psgChildes.ToDictionary<leaf.parentId,>  
+            psgChildes = result
+                .GroupBy(c=>c.Parent)
+                .ToDictionary(g => (int)g.Key, g => g.ToList());
 
-        #region 2. Итоговые строки для районных ПСГ
+            #endregion
+
+            #region 2. Итоговые строки для районных ПСГ
         var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
         var allPsgRows = new List<PivotRow>();
         foreach (var psgNode in psgNodes)
         {
             var psgRows = ComputePsgSummaryRows(psgNode);
-            result.AddRange(psgRows);
+                #region Добавляем строки с ПЧ
+                    var psgВсего = psgRows.Where(c => c.Category == "всего").FirstOrDefault();
+                    if (psgВсего != null) {
+                        if (psgChildes.TryGetValue((int)psgВсего.PchId, out var childes))
+                        {
+                            psgВсего.Childes.AddRange(childes);
+                        }
+                    }
+                #endregion
+                result.AddRange(psgRows);
             allPsgRows.AddRange(psgRows);
         }
         #endregion
@@ -138,12 +146,13 @@ public class PivotTreeBuilder
         #region 3. Территориальные итоги  { "ВПО", "ЧПО", "другие", "АСФ" }
         var territorialRows = new List<PivotRow>();
 
+
          //  3.1. Обычные категории (ВПО, ЧПО, другие, АСФ) ---
         foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
         {
             var rows = GetPsgRowsByCategory(allPsgRows, cat);
             var row = CreateTerritorialRow(rootNode, cat, rows);
-            if (row != null) territorialRows.Add(row);
+            if (row != null)  territorialRows.Add(row);
         }
 
         #endregion
@@ -166,31 +175,58 @@ public class PivotTreeBuilder
         var rowsForTotal = territorialRows
             .Where(r => r.Category == "ГПС" || r.Category == "другие" || r.Category == "ЧПО" || r.Category == "ВПО")
             .ToList();
-        var totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
+        PivotRow totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
+        //Итоговые по всем ПСГ -> список дочерних в "Территориальный(всего)"
+        totalRow.Childes.AddRange(result.Where(c => c.Category == "всего").ToList());
+        //добавляем в дочерние - ГПС,другие,ЧПО,ВПО 
+        totalRow.Childes.AddRange(rowsForTotal);
+            //добавляем в дочерние - ФПС,другие,ЧПО,ВПО 
+        totalRow.Childes.Add(fpsRow);
+            var asfRow = territorialRows.Where(c => c.Category == "АСФ").FirstOrDefault();
+        if(asfRow != null)
+            totalRow.Childes.Add(asfRow);
         if (totalRow != null) territorialRows.Add(totalRow);
 
         result.AddRange(territorialRows);
-        #endregion
+            #endregion
+        allPivotRows = result;
         return result;
     }
     private PivotRow CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow> rowsToSum)
     {
-        // Если список пуст – возвращаем null (строку не создаём)
-        if (rowsToSum == null || !rowsToSum.Any())
+            Dictionary<string, string> displayNames = new Dictionary<string, string>() {
+             {"всего","Территориальный" },
+             {"другие","    другие категории" },
+             {"другиеПСГ","    другие категории" },
+             {"ФПС","    в т.ч. ФПС" },
+             {"ГПС","    по ГПС" },
+             {"ЧПО","    по ЧПО" },
+             {"АСФ","    по АСФ" },
+             {"ВПО","    по ВПО" },
+             {"ППС","    по ППС" }
+         };
+
+            // Если список пуст – возвращаем null (строку не создаём)
+            if (rowsToSum == null || !rowsToSum.Any())
             return null;
 
         var row = new PivotRow
         {
             ПСГ = "Территориальный",
-            ПЧ = categoryName,
             Category = categoryName,
-            PchId = -rootNode.Id,
+            PchId = rootNode.Id,
             Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
             Isitog = 1,
+            Norder = rootNode.Norder
         };
+            if (displayNames.ContainsKey(categoryName))
+                row.ПЧ = displayNames[categoryName];
+            else
+                row.ПЧ = "Не определено";
 
-        // Суммируем все числовые свойства
-        foreach (var prop in typeof(PivotRow).GetProperties())
+
+            // Суммируем все числовые свойства
+            foreach (var prop in typeof(PivotRow).GetProperties())
         {
             if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
             {
@@ -209,24 +245,6 @@ public class PivotTreeBuilder
     private List<PivotRow> GetPsgRowsByCategory(List<PivotRow> allPsgRows, string category)
     {
         return allPsgRows.Where(r => r.Category == category).ToList();
-    }
-    private PivotRow ComputeTerritorialFpsRow1(ReportNode rootNode, List<PivotRow> allPsgRows, List<PivotRow> leavesPivotRows)
-    {
-        // 1. Берём все строки ПСГ с категорией "ФПС"
-        var fpsRows = allPsgRows.Where(r => r.Category == "ФПС").ToList();
-
-        // 2. Исключаем строки, принадлежащие Прионежскому ПСГ
-        //    Предположим, что в allPsgRows есть поле ПСГ (имя или Id) – мы можем отфильтровать
-        //    Например, если мы храним имя ПСГ в свойстве ПСГ строки:
-        fpsRows = fpsRows.Where(r => r.ПСГ != "Прионежский").ToList();
-
-        // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
-        //    Находим лист ПЧ-75
-        //var pch75Leaf = leavesPivotRows.FirstOrDefault(l => l.PchId == 1793);//.Contains("ПЧ-75") || l.Name.Contains("75"));
-        //fpsRows = fpsRows.Add(pch75Leaf);
-        //fpsRows.Add(fpsRows);
-        // 4. Создаём территориальную строку для ФПС
-        return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
     }
     private PivotRow ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow> allPsgRows)
     {
@@ -256,7 +274,11 @@ public class PivotTreeBuilder
 
     private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
     {
-        var rows = new List<PivotRow>();
+
+            // В чём различие? -
+            // если это корень - то у него есть листья - ПЧ
+            // можно просто завести словарь в ReportNode <категория, displayName> или здесь.
+        var rows = new List<PivotRow>();  //соберёт 
         var leaves = GetAllLeaves(psgNode);
         var leavesByType = leaves
             .Where(l => !string.IsNullOrEmpty(l.Category))
@@ -264,49 +286,90 @@ public class PivotTreeBuilder
             .GroupBy(l => l.Category)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-
         // -1.ФПС
         var fpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС").SelectMany(kv => kv.Value).ToList();
         rows.Add(CreateCategoryRow(psgNode, "ФПС", fpsLeaves));
         // 0. ППС
         var ppsLeaves = leavesByType.Where(kv => kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
         rows.Add(CreateCategoryRow(psgNode, "ППС", ppsLeaves));
-        //// 1. ГПС
-        //var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
-        //rows.Add(CreateCategoryRow(psgNode, "ГПС", gpsLeaves));
+        // 1. ГПС
+        var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
+            var всегоПСГrow = CreateCategoryRow(psgNode, "ГПС", gpsLeaves);
+        rows.Add(всегоПСГrow);
 
-        // 2. другие
-        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "ЧПО" && kv.Key != "ВПО" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
+            // 2. другие
+            var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "ЧПО" && kv.Key != "ВПО" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
         rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
         // 2. други1
         var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
-        rows.Add(CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves));// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
-        // 3. всего
-        rows.Add(CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList()));
+        var другиеПСГRow = CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves);
+        rows.Add(другиеПСГRow);// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
+                                                                       // 3. всего
+        var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другиеПСГ").ToList());
 
+
+            var ВПО_ЧПО_АСФrows = new List<PivotRow>();
         // 4. ВПО, ЧПО, АСФ
         foreach (var cat in new[] { "ВПО", "ЧПО", "АСФ" })
         {
-            if (leavesByType.TryGetValue(cat, out var catLeaves))
-                rows.Add(CreateCategoryRow(psgNode, cat, catLeaves));
-        }
-
+            if (leavesByType.TryGetValue(cat, out var catLeaves)) {
+                    var r = CreateCategoryRow(psgNode, cat, catLeaves);
+                    ВПО_ЧПО_АСФrows.Add(r);
+                }
+                rows.AddRange(ВПО_ЧПО_АСФrows);
+            }
+            //Сформировать строку "всего" для районного ПСГ и занести все предыдущие итоговые в childes
+            всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow,другиеПСГRow });
+            всегоRow.Childes.AddRange(ВПО_ЧПО_АСФrows);
+        
+            rows.Add(всегоRow);
         return rows;
     }
     private PivotRow CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
     {
-        var row = new PivotRow
+            Dictionary<string, string> displayNames = new Dictionary<string, string>() {
+             {"всего","" },
+             {"другие","    другие категории" },
+             {"другиеПСГ","    другие категории" },
+             {"ФПС","    в т.ч. ФПС" },
+             {"ГПС","    по ГПС" },
+             {"ЧПО","    по ЧПО" },
+             {"АСФ","    по АСФ" },
+             {"ВПО","    по ВПО" },
+             {"ППС","    по ППС" }
+         };
+            Dictionary<string, int> Norders = new Dictionary<string, int>() {
+             {"всего",-20 },
+             {"ГПС",-19 },
+             {"другие",-18 },
+             {"другиеПСГ",-17 },
+             {"ФПС",-16 },
+             {"ЧПО",-15 },
+             {"АСФ",-10 },
+             {"ВПО",-14 },
+             {"ППС",0 }
+         };
+
+            var row = new PivotRow
         {
             ПСГ = psgNode.Name,
-            ПЧ = categoryName, // можно по-разному
             Category = categoryName,
-            PchId = -psgNode.Id,
+            PchId = psgNode.Id,
             Parent = psgNode.ParentId,
             Isitog = 1,
         };
+            row.Norder = Norders[categoryName];
+            if (displayNames.ContainsKey(categoryName))
+                row.ПЧ = displayNames[categoryName];
+            else if(categoryName == "всего")
+                   row.ПЧ = psgNode.Name;
+             else
+                row.ПЧ = "Не определено";
 
-        // Для каждой колонки суммируем значения по листьям
-        foreach (var kv in columnConfigs)
+
+
+            // Для каждой колонки суммируем значения по листьям
+            foreach (var kv in columnConfigs)
         {
             var propName = kv.Key;
             var config = kv.Value;
@@ -325,11 +388,11 @@ public class PivotTreeBuilder
         var row = new PivotRow
         {
             ПСГ = GetPsgNameForNode(leaf),
-            ПЧ = leaf.Name,
+            ПЧ = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
             Category = leaf.Category,
-            PchId = leaf.Id,
-            Parent = leaf.ParentId,
-            Norder = 0,
+            PchId = leaf.Id,            // Id ПЧ т.к. это лист
+            Parent = leaf.ParentId,     // parentId(psgstat) = parent(psgdata) 
+            Norder = leaf.Norder,
             Isitog = 0,
         };
 
@@ -349,13 +412,14 @@ public class PivotTreeBuilder
     }
     private PivotRow CreateTotalRow(ReportNode psgNode, List<PivotRow> rowsToSum)
     {
-        var row = new PivotRow
-        {
-            ПСГ = psgNode.Name,
-            ПЧ = "всего",
-            Category = "всего",
-            PchId = -psgNode.Id,
-            Parent = psgNode.ParentId,
+            var row = new PivotRow
+            {
+                ПСГ = psgNode.Name,
+                ПЧ = psgNode.Name,
+                Category = "всего",
+                PchId = psgNode.Id,
+                Parent = psgNode.ParentId,
+                Norder = -30,
             Isitog = 1,
         };
 
@@ -455,13 +519,13 @@ public class PivotTreeBuilder
     private string GetPsgNameForNode(ReportNode node)
     {
         int? currentId = node.ParentId;
-        while (currentId.HasValue && currentId != 0)
+        while (currentId.HasValue && currentId != 0) // никогда не равен 0, но оставляем- не хуже
         {
             if (_psgDict.TryGetValue(currentId.Value, out var psg))
             {
                 if (psg.Isitog == 1)
-                    return psg.Displayname ?? psg.Name ?? "ПСГ";
-                currentId = psg.Parent;
+                    return psg.Displayname;// имена итоговых держим в psgstat
+                currentId = psg.Parent;// иначе - просто имя psg
             }
             else break;
         }
@@ -583,7 +647,20 @@ public class PivotTreeBuilder
         };
     }
 
- }
+    public static List<PivotRow> GetPsgChildes(string _psgname)
+    {
+        List<PivotRow> lst = new List<PivotRow>();
+            if (allPivotRows == null)
+                return null;
+        PivotRow psgRow = allPivotRows.Where(c => ((c.ПСГ.Contains(_psgname)) && (c.Category.Contains("всего")))).FirstOrDefault();//Лучше по Id ПЧ или гарнизона
+        if (psgRow == null) return lst;
+        lst.Add(psgRow);
+        lst.AddRange(psgRow.Childes);
+        return lst.OrderBy(c => c.Norder).ToList();
+     }
+
+
+    }
     public class PivotRow
     {
         // --- Иерархия ---
@@ -594,6 +671,7 @@ public class PivotTreeBuilder
         public int? Parent { get; set; }
         public int Norder { get; set; }
         public int Isitog { get; set; }
+        public List<PivotRow> Childes = new List<PivotRow>();
 
         // --- Колонки (свойства, соответствующие DataPropertyName в гриде) ---
 

@@ -9,10 +9,12 @@ namespace stroevkaI.Models
     {
         public int Id { get; set; }                             // Id ПЧ/ПСГ
         public string Name { get; set; }                        // Наименование 
+        public string displayName { get; set; }                 // Наименование на экране
         public string Category { get; set; }                    // ППС,ФПС, ДПО - для листьев gps,main...  для внутр узлов
         public int ParentId { get; set; }                       //  Id родителя
         public List<ReportNode> Children { get; set; } = new List<ReportNode>();  // дочки
         public int Isitog { get; set; }                       //  признак итогой строки
+        public int Norder { get; set; }
 
         // RawData: sourceType -> (itemName -> (fieldName -> value))
         public Dictionary<string, Dictionary<string, Dictionary<string, decimal>>> RawData { get; set; }
