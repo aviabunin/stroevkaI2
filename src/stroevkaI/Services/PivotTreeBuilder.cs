@@ -198,13 +198,24 @@ public class PivotTreeBuilder
              {"всего","Территориальный" },
              {"другие","    другие категории" },
              {"другиеПСГ","    другие категории" },
-             {"ФПС","    в т.ч. ФПС" },
+             {"ФПС","         в т.ч. ФПС" },
              {"ГПС","    по ГПС" },
              {"ЧПО","    по ЧПО" },
              {"АСФ","    по АСФ" },
              {"ВПО","    по ВПО" },
              {"ППС","    по ППС" }
          };
+            Dictionary<string, int> Norders = new Dictionary<string, int>() {
+             {"всего",-50 },
+             {"ГПС",-49 },
+             {"ФПС",-48 },
+             {"другие",-47 },
+             {"другиеПСГ",-46 },
+             {"ВПО",-45 },
+             {"ЧПО",-44 },
+             {"АСФ",-43 },
+             {"ППС",-40 }
+            };
 
             // Если список пуст – возвращаем null (строку не создаём)
             if (rowsToSum == null || !rowsToSum.Any())
@@ -217,13 +228,13 @@ public class PivotTreeBuilder
             PchId = rootNode.Id,
             Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
             Isitog = 1,
-            Norder = rootNode.Norder
+          
         };
             if (displayNames.ContainsKey(categoryName))
                 row.ПЧ = displayNames[categoryName];
             else
                 row.ПЧ = "Не определено";
-
+            row.Norder = Norders[categoryName];
 
             // Суммируем все числовые свойства
             foreach (var prop in typeof(PivotRow).GetProperties())
@@ -316,8 +327,8 @@ public class PivotTreeBuilder
                     var r = CreateCategoryRow(psgNode, cat, catLeaves);
                     ВПО_ЧПО_АСФrows.Add(r);
                 }
-                rows.AddRange(ВПО_ЧПО_АСФrows);
             }
+            rows.AddRange(ВПО_ЧПО_АСФrows);
             //Сформировать строку "всего" для районного ПСГ и занести все предыдущие итоговые в childes
             всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow,другиеПСГRow });
             всегоRow.Childes.AddRange(ВПО_ЧПО_АСФrows);
@@ -339,15 +350,15 @@ public class PivotTreeBuilder
              {"ППС","    по ППС" }
          };
             Dictionary<string, int> Norders = new Dictionary<string, int>() {
-             {"всего",-20 },
-             {"ГПС",-19 },
-             {"другие",-18 },
-             {"другиеПСГ",-17 },
-             {"ФПС",-16 },
-             {"ЧПО",-15 },
-             {"АСФ",-10 },
-             {"ВПО",-14 },
-             {"ППС",0 }
+             {"всего",20 },
+             {"ГПС",21 },
+             {"другие",23 },
+             {"другиеПСГ",23 },
+             {"ФПС",22 },
+             {"ЧПО",25 },
+             {"АСФ",27 },
+             {"ВПО",26 },
+             {"ППС",26 }
          };
 
             var row = new PivotRow
@@ -355,10 +366,16 @@ public class PivotTreeBuilder
             ПСГ = psgNode.Name,
             Category = categoryName,
             PchId = psgNode.Id,
+            Norder = psgNode.Norder,
             Parent = psgNode.ParentId,
             Isitog = 1,
         };
-            row.Norder = Norders[categoryName];
+            if (categoryName == "всего")
+                row.Norder = psgNode.Norder;
+            else
+                row.Norder = Norders[categoryName];
+
+
             if (displayNames.ContainsKey(categoryName))
                 row.ПЧ = displayNames[categoryName];
             else if(categoryName == "всего")
@@ -419,7 +436,7 @@ public class PivotTreeBuilder
                 Category = "всего",
                 PchId = psgNode.Id,
                 Parent = psgNode.ParentId,
-                Norder = -30,
+                Norder = psgNode.Norder,
             Isitog = 1,
         };
 
