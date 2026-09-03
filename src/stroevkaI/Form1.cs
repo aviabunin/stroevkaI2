@@ -27,6 +27,7 @@ namespace stroevkaI
         private FirePsgStat rootPsg = null;
         public string rootPsgName = "";
         private FirePsgStat selectedItem = null;
+        private PivotRow selectedItem1 = null;
         private List<FirePsgStat> allPsgs;
         private bool isLeftPanelVisible = false;
 
@@ -48,6 +49,7 @@ namespace stroevkaI
             InitializeComponent();
             BuildTree();
             this.EquipmentDataGridView.AutoGenerateColumns = false;
+            this.PivotRowGrid.AutoGenerateColumns = false;
             //this.btnTools.Sp.sp = true;
 
             karaulTextBox.Text = "       Караул № "+караул.ToString();
@@ -885,6 +887,115 @@ namespace stroevkaI
                 {
                     // Если деталей нет — показываем стандартную подсказку (или ничего)
                     e.ToolTipText = null; // не показывать дополнительную подсказку
+                }
+            }
+        }
+
+        private void PivotRowGrid_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            if (e.RowIndex == -1 && e.ColumnIndex >= 1)
+            {
+                e.Paint(e.ClipBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
+
+                e.Graphics.TranslateTransform(e.CellBounds.Left, e.CellBounds.Bottom);
+                e.Graphics.RotateTransform(-90);
+
+                StringFormat format = new StringFormat
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+
+                Rectangle rect = new Rectangle(0, 0, e.CellBounds.Height, e.CellBounds.Width);
+                e.Graphics.DrawString(
+                    PivotRowGrid.Columns[e.ColumnIndex].HeaderText,
+                    e.CellStyle.Font,
+                    Brushes.Black,
+                    rect,
+                    format);
+
+                e.Graphics.ResetTransform();
+                e.Handled = true;
+            }
+        }
+
+        private void PivotRowGrid_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0) return;
+
+            var checkBoxCell = PivotRowGrid.Rows[e.RowIndex].Cells["Datafilled"] as DataGridViewCheckBoxCell;
+            if (checkBoxCell != null && checkBoxCell.Value != null)
+            {
+                try
+                {
+                    object value = checkBoxCell.Value;
+                    bool isChecked = false;
+
+                    if (value is bool)
+                    {
+                        isChecked = (bool)value;
+                    }
+                    else if (value is string)
+                    {
+                        string strValue = (string)value;
+                        isChecked = strValue == "1" || strValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+                    }
+                    else
+                    {
+                        isChecked = Convert.ToBoolean(value);
+                    }
+
+                    if (isChecked)
+                    {
+                        PivotRowGrid.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightGreen;
+                        PivotRowGrid.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
+                    }
+                    else
+                    {
+                        PivotRowGrid.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.White;
+                        PivotRowGrid.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
+                    }
+                }
+                catch
+                {
+                    PivotRowGrid.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.White;
+                    PivotRowGrid.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
+                }
+            }
+        }
+
+        private void PivotRowGrid_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            if (PivotRowGrid.CurrentCell is DataGridViewCheckBoxCell)
+            {
+                PivotRowGrid.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            }
+        }
+
+        private void PivotRowGrid_DoubleClick(object sender, EventArgs e)
+        {
+            if (PivotRowGrid.CurrentRow != null)
+            {
+                selectedItem1 = (PivotRow)PivotRowGrid.CurrentRow.DataBoundItem;
+                if (selectedItem != null)
+                {
+                    if (selectedItem.Isitog == 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
+                    {
+                        var str = selectedItem.Псг;
+                        if (cmbPsg.Items.Contains(str))
+                            //lastChoose = cmbPsg.Text;
+                            //if (str == cmbPsg.Text)
+                            //    str = "Территориальный"; // если клик на уже выбранном ПСГ то возврат к Территориальному
+                            cmbPsg.Text = str;
+                        return;
+                    }
+
+
+                    using (var editorForm = new EditorsForm(selectedItem))
+                    {
+                        editorForm.ShowDialog();
+                    }
+                    refreshGrid(rootPsgName);
                 }
             }
         }

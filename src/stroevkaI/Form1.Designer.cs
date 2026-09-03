@@ -466,7 +466,11 @@
             this.PivotRowGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.PivotRowGrid.Size = new System.Drawing.Size(867, 221);
             this.PivotRowGrid.TabIndex = 2;
+            this.PivotRowGrid.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.PivotRowGrid_CellPainting);
             this.PivotRowGrid.CellToolTipTextNeeded += new System.Windows.Forms.DataGridViewCellToolTipTextNeededEventHandler(this.PivotRowGrid_CellToolTipTextNeeded);
+            this.PivotRowGrid.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.PivotRowGrid_CellValueChanged);
+            this.PivotRowGrid.CurrentCellDirtyStateChanged += new System.EventHandler(this.PivotRowGrid_CurrentCellDirtyStateChanged);
+            this.PivotRowGrid.DoubleClick += new System.EventHandler(this.PivotRowGrid_DoubleClick);
             // 
             // dataGridViewTextBoxColumn1
             // 
