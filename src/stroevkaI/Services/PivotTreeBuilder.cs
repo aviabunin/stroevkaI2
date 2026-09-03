@@ -1,5 +1,6 @@
 ﻿using StorageI.ModelsStroevkaMySql;
 using stroevkaI.Models;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
 namespace stroevkaI.Services { 
@@ -123,13 +124,13 @@ public class PivotTreeBuilder
 
             #endregion
 
-            #region 2. Итоговые строки для районных ПСГ
+        #region 2. Итоговые строки для районных ПСГ
         var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
         var allPsgRows = new List<PivotRow>();
         foreach (var psgNode in psgNodes)
         {
             var psgRows = ComputePsgSummaryRows(psgNode);
-                #region Добавляем строки с ПЧ
+            #region Добавляем строки с ПЧ
                     var psgВсего = psgRows.Where(c => c.Category == "всего").FirstOrDefault();
                     if (psgВсего != null) {
                         if (psgChildes.TryGetValue((int)psgВсего.PchId, out var childes))
@@ -239,7 +240,7 @@ public class PivotTreeBuilder
             // Суммируем все числовые свойства
             foreach (var prop in typeof(PivotRow).GetProperties())
             {
-                if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
+                if (IsDecimalProperty(prop))
                 {
                     decimal total = 0;
                     var details = new List<DetailItem>();
@@ -314,10 +315,6 @@ public class PivotTreeBuilder
 
     private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
     {
-
-            // В чём различие? -
-            // если это корень - то у него есть листья - ПЧ
-            // можно просто завести словарь в ReportNode <категория, displayName> или здесь.
         var rows = new List<PivotRow>();  //соберёт 
         var leaves = GetAllLeaves(psgNode);
         var leavesByType = leaves
@@ -337,8 +334,8 @@ public class PivotTreeBuilder
             var всегоПСГrow = CreateCategoryRow(psgNode, "ГПС", gpsLeaves);
         rows.Add(всегоПСГrow);
 
-            // 2. другие
-            var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "ЧПО" && kv.Key != "ВПО" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
+        // 2. другие 
+        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС"  && kv.Key != "ВПО" && kv.Key != "АСФ" && kv.Key != "ЧПО").SelectMany(kv => kv.Value).ToList();
         rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
         // 2. други1
         var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
@@ -485,7 +482,7 @@ public class PivotTreeBuilder
             // Суммируем все числовые свойства из переданных строк
             foreach (var prop in typeof(PivotRow).GetProperties())
             {
-                if (prop.PropertyType == typeof(decimal) && prop.CanWrite)
+                if (IsDecimalProperty(prop))
                 {
                     decimal total = 0;
                     var details = new List<DetailItem>();
@@ -1215,13 +1212,17 @@ public class PivotTreeBuilder
                 }
             };
         }
-        private void InitializeColumnConfigs()
+    private void InitializeColumnConfigs()
         {
             columnConfigs = new Dictionary<string, ColumnConfig>
             {
                 // ---- Боевой расчёт (br), резерв (rezerv), ремонт (remont) для каждого типа техники ----
                 // АЦ
-                ["AcBr"] = new ColumnConfig { PropertyName = "AcBr", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "br" },
+                ["AcBr"] = new ColumnConfig 
+                    { PropertyName = "AcBr", 
+                      SourceTable = "sredstva", 
+                      FilterValues = new List<string> { "АЦ" }, 
+                      AggregateField = "br" },
                 ["AcRezerv"] = new ColumnConfig { PropertyName = "AcRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "rezerv" },
                 ["AcRemont"] = new ColumnConfig { PropertyName = "AcRemont", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "remont" },
 
@@ -1465,7 +1466,12 @@ public class PivotTreeBuilder
             };
         }
 
-        public static List<PivotRow> GetPsgChildes(string _psgname)
+//        В CreateCategoryRow
+
+//В CreateTotalRow
+
+//В CreateTerritorialRow
+    public static List<PivotRow> GetPsgChildes(string _psgname)
     {
         List<PivotRow> lst = new List<PivotRow>();
             if (allPivotRows == null)
@@ -1476,7 +1482,12 @@ public class PivotTreeBuilder
         lst.AddRange(psgRow.Childes);
         return lst.OrderBy(c => c.Norder).ToList();
      }
-
+        private static bool IsDecimalProperty(PropertyInfo prop)
+        {
+            if (!prop.CanWrite) return false;
+            var type = prop.PropertyType;
+            return type == typeof(decimal) || type == typeof(decimal?);
+        }
 
     }
     public class PivotRow1
