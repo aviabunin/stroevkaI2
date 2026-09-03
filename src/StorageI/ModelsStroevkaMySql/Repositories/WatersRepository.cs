@@ -18,10 +18,10 @@ namespace StorageI.Repositories
 
         public List<Water> LoadWaters(int subdivisionId)
         {
-            return _context.Waters
-                .Where(w => w.SubdivisionId == subdivisionId)
-                .OrderBy(w => w.Norder)
-                .ToList();
+            return new List<Water>();// _context.Waters
+                //.Where(w => w.SubdivisionId == subdivisionId)
+                //.OrderBy(w => w.Norder)
+                //.ToList();
         }
 
         public bool SaveWaters(List<Water> items)

@@ -49,6 +49,7 @@
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panelLeft = new System.Windows.Forms.Panel();
             this.listBoxTools = new System.Windows.Forms.ListBox();
+            this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.PivotRowGrid = new System.Windows.Forms.DataGridView();
             this.dataGridViewTextBoxColumn1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewCheckBoxColumn1 = new System.Windows.Forms.DataGridViewCheckBoxColumn();
@@ -201,6 +202,10 @@
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.panelLeft.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
+            this.splitContainer2.Panel1.SuspendLayout();
+            this.splitContainer2.Panel2.SuspendLayout();
+            this.splitContainer2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.PivotRowGrid)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.EquipmentDataGridView)).BeginInit();
             this.SuspendLayout();
@@ -348,12 +353,12 @@
             // splitContainer1.Panel1
             // 
             this.splitContainer1.Panel1.Controls.Add(this.panelLeft);
+            this.splitContainer1.Panel1Collapsed = true;
             this.splitContainer1.Panel1MinSize = 150;
             // 
             // splitContainer1.Panel2
             // 
-            this.splitContainer1.Panel2.Controls.Add(this.PivotRowGrid);
-            this.splitContainer1.Panel2.Controls.Add(this.EquipmentDataGridView);
+            this.splitContainer1.Panel2.Controls.Add(this.splitContainer2);
             this.splitContainer1.Size = new System.Drawing.Size(1108, 399);
             this.splitContainer1.SplitterDistance = 237;
             this.splitContainer1.TabIndex = 2;
@@ -382,6 +387,23 @@
             this.listBoxTools.Size = new System.Drawing.Size(237, 399);
             this.listBoxTools.TabIndex = 0;
             this.listBoxTools.SelectedIndexChanged += new System.EventHandler(this.ListBoxTools_SelectedIndexChanged);
+            // 
+            // splitContainer2
+            // 
+            this.splitContainer2.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.splitContainer2.Location = new System.Drawing.Point(0, 0);
+            this.splitContainer2.Name = "splitContainer2";
+            // 
+            // splitContainer2.Panel1
+            // 
+            this.splitContainer2.Panel1.Controls.Add(this.PivotRowGrid);
+            // 
+            // splitContainer2.Panel2
+            // 
+            this.splitContainer2.Panel2.Controls.Add(this.EquipmentDataGridView);
+            this.splitContainer2.Size = new System.Drawing.Size(1108, 399);
+            this.splitContainer2.SplitterDistance = 571;
+            this.splitContainer2.TabIndex = 2;
             // 
             // PivotRowGrid
             // 
@@ -464,13 +486,8 @@
             this.PivotRowGrid.RowHeadersVisible = false;
             this.PivotRowGrid.RowTemplate.Height = 23;
             this.PivotRowGrid.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.PivotRowGrid.Size = new System.Drawing.Size(867, 221);
-            this.PivotRowGrid.TabIndex = 2;
-            this.PivotRowGrid.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.PivotRowGrid_CellPainting);
-            this.PivotRowGrid.CellToolTipTextNeeded += new System.Windows.Forms.DataGridViewCellToolTipTextNeededEventHandler(this.PivotRowGrid_CellToolTipTextNeeded);
-            this.PivotRowGrid.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.PivotRowGrid_CellValueChanged);
-            this.PivotRowGrid.CurrentCellDirtyStateChanged += new System.EventHandler(this.PivotRowGrid_CurrentCellDirtyStateChanged);
-            this.PivotRowGrid.DoubleClick += new System.EventHandler(this.PivotRowGrid_DoubleClick);
+            this.PivotRowGrid.Size = new System.Drawing.Size(571, 399);
+            this.PivotRowGrid.TabIndex = 3;
             // 
             // dataGridViewTextBoxColumn1
             // 
@@ -1036,19 +1053,14 @@
             this.Column52,
             this.Column53_67,
             this.rowIdColumn});
-            this.EquipmentDataGridView.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.EquipmentDataGridView.Location = new System.Drawing.Point(0, 221);
+            this.EquipmentDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.EquipmentDataGridView.Location = new System.Drawing.Point(0, 0);
             this.EquipmentDataGridView.Name = "EquipmentDataGridView";
             this.EquipmentDataGridView.RowHeadersVisible = false;
             this.EquipmentDataGridView.RowTemplate.Height = 23;
             this.EquipmentDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.EquipmentDataGridView.Size = new System.Drawing.Size(867, 178);
-            this.EquipmentDataGridView.TabIndex = 1;
-            this.EquipmentDataGridView.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.EquipmentDataGridView_CellContentClick);
-            this.EquipmentDataGridView.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.EquipmentDataGridView_CellPainting_1);
-            this.EquipmentDataGridView.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.EquipmentDataGridView_CellValueChanged);
-            this.EquipmentDataGridView.CurrentCellDirtyStateChanged += new System.EventHandler(this.EquipmentDataGridView_CurrentCellDirtyStateChanged);
-            this.EquipmentDataGridView.DoubleClick += new System.EventHandler(this.EquipmentDataGridView_DoubleClick);
+            this.EquipmentDataGridView.Size = new System.Drawing.Size(533, 399);
+            this.EquipmentDataGridView.TabIndex = 2;
             // 
             // garnizonColumn
             // 
@@ -1564,6 +1576,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.panelLeft.ResumeLayout(false);
+            this.splitContainer2.Panel1.ResumeLayout(false);
+            this.splitContainer2.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
+            this.splitContainer2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.PivotRowGrid)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.EquipmentDataGridView)).EndInit();
             this.ResumeLayout(false);
@@ -1578,7 +1594,6 @@
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Panel panelLeft;
         private System.Windows.Forms.ListBox listBoxTools;
-        private System.Windows.Forms.DataGridView EquipmentDataGridView;
         private System.Windows.Forms.StatusStrip statusStrip1;
         private ToolStripControlHost toolStripSpacer;
         private ToolStrip toolStripLeft;
@@ -1593,76 +1608,8 @@
         private ToolStripLabel timeTextBox;
         private ToolStripButton generator;
         private ToolStripButton pchsRefresh;
-        private DataGridViewTextBoxColumn garnizonColumn;
-        private DataGridViewCheckBoxColumn Datafilled;
-        private DataGridViewTextBoxColumn ac_brColumn3;
-        private DataGridViewTextBoxColumn aclBrColumn;
-        private DataGridViewTextBoxColumn avBrColumn;
-        private DataGridViewTextBoxColumn aca_appBrColumn;
-        private DataGridViewTextBoxColumn pnsBrColumn;
-        private DataGridViewTextBoxColumn alBrColumn;
-        private DataGridViewTextBoxColumn кпBrColumn;
-        private DataGridViewTextBoxColumn arBr1Column_10;
-        private DataGridViewTextBoxColumn asmpBrColumn;
-        private DataGridViewTextBoxColumn ashBrColumn_10;
-        private DataGridViewTextBoxColumn uksBrColumn;
-        private DataGridViewTextBoxColumn fireTrainColumn;
-        private DataGridViewTextBoxColumn АсоRezerv;
-        private DataGridViewTextBoxColumn acrezerv1Column;
-        private DataGridViewTextBoxColumn aclrezerv1Column;
-        private DataGridViewTextBoxColumn anrRezerv1Column;
-        private DataGridViewTextBoxColumn avRezerv1Column;
-        private DataGridViewTextBoxColumn acaAppRezervColumn;
-        private DataGridViewTextBoxColumn pnsRezervColumn;
-        private DataGridViewTextBoxColumn alRezervColumn;
-        private DataGridViewTextBoxColumn Column8_20;
-        private DataGridViewTextBoxColumn Column9;
-        private DataGridViewTextBoxColumn Column10;
-        private DataGridViewTextBoxColumn Column11;
-        private DataGridViewTextBoxColumn Column13;
-        private DataGridViewTextBoxColumn Column14;
-        private DataGridViewTextBoxColumn Column15;
-        private DataGridViewTextBoxColumn Column27;
-        private DataGridViewTextBoxColumn Column290;
-        private DataGridViewTextBoxColumn Column300;
-        private DataGridViewTextBoxColumn Column18_30;
-        private DataGridViewTextBoxColumn Column19;
-        private DataGridViewTextBoxColumn Column20;
-        private DataGridViewTextBoxColumn Column1;
-        private DataGridViewTextBoxColumn Column2;
-        private DataGridViewTextBoxColumn Column3;
-        private DataGridViewTextBoxColumn Column4;
-        private DataGridViewTextBoxColumn сизодбр1Column;
-        private DataGridViewTextBoxColumn Column24;
-        private DataGridViewTextBoxColumn Column25;
-        private DataGridViewTextBoxColumn Column26_40;
-        private DataGridViewTextBoxColumn Column28;
-        private DataGridViewTextBoxColumn Column29;
-        private DataGridViewTextBoxColumn Column30;
-        private DataGridViewTextBoxColumn Column31;
-        private DataGridViewTextBoxColumn Column32;
-        private DataGridViewTextBoxColumn Column33;
-        private DataGridViewTextBoxColumn Column34;
-        private DataGridViewTextBoxColumn Column35;
-        private DataGridViewTextBoxColumn Column36_50;
-        private DataGridViewTextBoxColumn Column37;
-        private DataGridViewTextBoxColumn Column38;
-        private DataGridViewTextBoxColumn Column39;
-        private DataGridViewTextBoxColumn Column40;
-        private DataGridViewTextBoxColumn Column41;
-        private DataGridViewTextBoxColumn Column42;
-        private DataGridViewTextBoxColumn Column43;
-        private DataGridViewTextBoxColumn Column44;
-        private DataGridViewTextBoxColumn Column45;
-        private DataGridViewTextBoxColumn Column46_60;
-        private DataGridViewTextBoxColumn Column47;
-        private DataGridViewTextBoxColumn Column48;
-        private DataGridViewTextBoxColumn Column49;
-        private DataGridViewTextBoxColumn Column50;
-        private DataGridViewTextBoxColumn Column51;
-        private DataGridViewTextBoxColumn Column52;
-        private DataGridViewTextBoxColumn Column53_67;
-        private DataGridViewTextBoxColumn rowIdColumn;
+        private ToolTip toolTip1;
+        private SplitContainer splitContainer2;
         private DataGridView PivotRowGrid;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn1;
         private DataGridViewCheckBoxColumn dataGridViewCheckBoxColumn1;
@@ -1734,7 +1681,77 @@
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn67;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn68;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn69;
-        private ToolTip toolTip1;
+        private DataGridView EquipmentDataGridView;
+        private DataGridViewTextBoxColumn garnizonColumn;
+        private DataGridViewCheckBoxColumn Datafilled;
+        private DataGridViewTextBoxColumn ac_brColumn3;
+        private DataGridViewTextBoxColumn aclBrColumn;
+        private DataGridViewTextBoxColumn avBrColumn;
+        private DataGridViewTextBoxColumn aca_appBrColumn;
+        private DataGridViewTextBoxColumn pnsBrColumn;
+        private DataGridViewTextBoxColumn alBrColumn;
+        private DataGridViewTextBoxColumn кпBrColumn;
+        private DataGridViewTextBoxColumn arBr1Column_10;
+        private DataGridViewTextBoxColumn asmpBrColumn;
+        private DataGridViewTextBoxColumn ashBrColumn_10;
+        private DataGridViewTextBoxColumn uksBrColumn;
+        private DataGridViewTextBoxColumn fireTrainColumn;
+        private DataGridViewTextBoxColumn АсоRezerv;
+        private DataGridViewTextBoxColumn acrezerv1Column;
+        private DataGridViewTextBoxColumn aclrezerv1Column;
+        private DataGridViewTextBoxColumn anrRezerv1Column;
+        private DataGridViewTextBoxColumn avRezerv1Column;
+        private DataGridViewTextBoxColumn acaAppRezervColumn;
+        private DataGridViewTextBoxColumn pnsRezervColumn;
+        private DataGridViewTextBoxColumn alRezervColumn;
+        private DataGridViewTextBoxColumn Column8_20;
+        private DataGridViewTextBoxColumn Column9;
+        private DataGridViewTextBoxColumn Column10;
+        private DataGridViewTextBoxColumn Column11;
+        private DataGridViewTextBoxColumn Column13;
+        private DataGridViewTextBoxColumn Column14;
+        private DataGridViewTextBoxColumn Column15;
+        private DataGridViewTextBoxColumn Column27;
+        private DataGridViewTextBoxColumn Column290;
+        private DataGridViewTextBoxColumn Column300;
+        private DataGridViewTextBoxColumn Column18_30;
+        private DataGridViewTextBoxColumn Column19;
+        private DataGridViewTextBoxColumn Column20;
+        private DataGridViewTextBoxColumn Column1;
+        private DataGridViewTextBoxColumn Column2;
+        private DataGridViewTextBoxColumn Column3;
+        private DataGridViewTextBoxColumn Column4;
+        private DataGridViewTextBoxColumn сизодбр1Column;
+        private DataGridViewTextBoxColumn Column24;
+        private DataGridViewTextBoxColumn Column25;
+        private DataGridViewTextBoxColumn Column26_40;
+        private DataGridViewTextBoxColumn Column28;
+        private DataGridViewTextBoxColumn Column29;
+        private DataGridViewTextBoxColumn Column30;
+        private DataGridViewTextBoxColumn Column31;
+        private DataGridViewTextBoxColumn Column32;
+        private DataGridViewTextBoxColumn Column33;
+        private DataGridViewTextBoxColumn Column34;
+        private DataGridViewTextBoxColumn Column35;
+        private DataGridViewTextBoxColumn Column36_50;
+        private DataGridViewTextBoxColumn Column37;
+        private DataGridViewTextBoxColumn Column38;
+        private DataGridViewTextBoxColumn Column39;
+        private DataGridViewTextBoxColumn Column40;
+        private DataGridViewTextBoxColumn Column41;
+        private DataGridViewTextBoxColumn Column42;
+        private DataGridViewTextBoxColumn Column43;
+        private DataGridViewTextBoxColumn Column44;
+        private DataGridViewTextBoxColumn Column45;
+        private DataGridViewTextBoxColumn Column46_60;
+        private DataGridViewTextBoxColumn Column47;
+        private DataGridViewTextBoxColumn Column48;
+        private DataGridViewTextBoxColumn Column49;
+        private DataGridViewTextBoxColumn Column50;
+        private DataGridViewTextBoxColumn Column51;
+        private DataGridViewTextBoxColumn Column52;
+        private DataGridViewTextBoxColumn Column53_67;
+        private DataGridViewTextBoxColumn rowIdColumn;
 
         // СОЗДАЕМ ПРУЖИНУ
 

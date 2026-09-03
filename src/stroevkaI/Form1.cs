@@ -56,7 +56,7 @@ namespace stroevkaI
 
             // Скрываем левую панель при запуске
             //splitContainer1.Panel1Collapsed = true;
-            isLeftPanelVisible = false;
+            //isLeftPanelVisible = true;
 
             // Загружаем список ПСГ
             LoadPsgList();
@@ -193,15 +193,15 @@ namespace stroevkaI
 
         private void ToggleLeftPanel()
         {
-            isLeftPanelVisible = !isLeftPanelVisible;
-            splitContainer1.Panel1Collapsed = !isLeftPanelVisible;
+            //isLeftPanelVisible = !isLeftPanelVisible;
+            splitContainer1.Panel1Collapsed = !splitContainer1.Panel1Collapsed;
 
             btnTools.Text = isLeftPanelVisible ? "Скрыть" : "Инструменты";
 
-            if (isLeftPanelVisible)
-            {
-                splitContainer1.SplitterDistance = 200;
-            }
+            //////if (isLeftPanelVisible)
+            //////{
+            //////    splitContainer1.SplitterDistance = 200;
+            //////}
         }
         #endregion
 

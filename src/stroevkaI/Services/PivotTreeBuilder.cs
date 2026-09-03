@@ -32,13 +32,13 @@ public class PivotTreeBuilder
         var sredstvaList = _context.Sredstvas.ToList();
         var sostavList = _context.Sostavs.ToList();
         var sizodList = _context.Sizods.ToList();
-        //var penasList = _context.Penas.ToList();
-        //var kostymsList = _context.Kostyms.ToList();
+        var penasList = _context.Penas.ToList();
+        var kostymsList = _context.Kostyms.ToList();
         //var watersList = _context.Waters.ToList();
-        //var contactsList = _context.Contacts.ToList();
+        var contactsList = _context.Contacts.ToList();
 
-        // Группируем данные по subdivision_id (Id узла)
-        var sredstvaBySubdiv = sredstvaList
+            // Группируем данные по subdivision_id (Id узла)
+            var sredstvaBySubdiv = sredstvaList
             .GroupBy(s => s.SubdivisionId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -69,7 +69,9 @@ public class PivotTreeBuilder
                     {
                         ["br"] = s.Br ?? 0,
                         ["rezerv"] = s.Rezerv ?? 0,
-                        ["remont"] = s.Remont ?? 0
+                        ["remont"] = s.Remont ?? 0,
+                        ["to1"] = (int?)s.Tofirst ?? 0,
+                        ["to2"] = (int?)s.Totow ?? 0
                     };
                     sredstvaDict[s.NameSredstvo] = fields;
                 }
@@ -1261,15 +1263,15 @@ public class PivotTreeBuilder
                 ["ПнсRezerv"] = new ColumnConfig { PropertyName = "ПнсRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "ПНС" }, AggregateField = "rezerv" },
                 ["ПнсRemont"] = new ColumnConfig { PropertyName = "ПнсRemont", SourceTable = "sredstva", FilterValues = new List<string> { "ПНС" }, AggregateField = "remont" },
 
-                // АЛ
-                ["AlBr"] = new ColumnConfig { PropertyName = "AlBr", SourceTable = "sredstva", FilterValues = new List<string> { "АЛ" }, AggregateField = "br" },
-                ["AlRezerv"] = new ColumnConfig { PropertyName = "AlRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "АЛ" }, AggregateField = "rezerv" },
-                ["AlRemont"] = new ColumnConfig { PropertyName = "AlRemont", SourceTable = "sredstva", FilterValues = new List<string> { "АЛ" }, AggregateField = "remont" },
+                // АЛ 7
+                ["AlBr"] = new ColumnConfig { PropertyName = "AlBr", SourceTable = "sredstva", FilterValues = new List<string> { "АЛ-30", "АЛ-50" }, AggregateField = "br" },
+                ["AlRezerv"] = new ColumnConfig { PropertyName = "AlRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "АЛ-30", "АЛ-50" }, AggregateField = "rezerv" },
+                ["AlRemont"] = new ColumnConfig { PropertyName = "AlRemont", SourceTable = "sredstva", FilterValues = new List<string> { "АЛ-30", "АЛ-50" }, AggregateField = "remont" },
 
                 // КП
-                ["КпBr"] = new ColumnConfig { PropertyName = "КпBr", SourceTable = "sredstva", FilterValues = new List<string> { "КП" }, AggregateField = "br" },
-                ["КпRezerv"] = new ColumnConfig { PropertyName = "КпRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "КП" }, AggregateField = "rezerv" },
-                ["КпRemont"] = new ColumnConfig { PropertyName = "КпRemont", SourceTable = "sredstva", FilterValues = new List<string> { "КП" }, AggregateField = "remont" },
+                ["КпBr"] = new ColumnConfig { PropertyName = "КпBr", SourceTable = "sredstva", FilterValues = new List<string> { "КП", "АКП" }, AggregateField = "br" },
+                ["КпRezerv"] = new ColumnConfig { PropertyName = "КпRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "КП", "АКП" }, AggregateField = "rezerv" },
+                ["КпRemont"] = new ColumnConfig { PropertyName = "КпRemont", SourceTable = "sredstva", FilterValues = new List<string> { "КП", "АКП" }, AggregateField = "remont" },
 
                 // АР
                 ["АрBr"] = new ColumnConfig { PropertyName = "АрBr", SourceTable = "sredstva", FilterValues = new List<string> { "АР" }, AggregateField = "br" },
@@ -1326,15 +1328,16 @@ public class PivotTreeBuilder
                 {
                     PropertyName = "РемонтСпециальной",
                     SourceTable = "sredstva",
-                    FilterValues = new List<string>(), // пока неизвестно
-                    Compute = fields => 0
+                    FilterValues = new List<string> { "АЛ", "КП", "АР", "АСМП", "ПСА", "АШ", "АСМ", "АСМРХ", "АВС", "УКС", "АБГ", "АКП", "АЛ-30", "АЛ-50" }, 
+                    AggregateField = "remont"
                 },
                 ["ПожарныйКорабльРемонт"] = new ColumnConfig
                 {
                     PropertyName = "ПожарныйКорабльРемонт",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "Пожарный_корабль" },
-                    AggregateField = "remont"
+                    Compute = fields =>  fields.GetValueOrDefault("rezerv", 0) + fields.GetValueOrDefault("remont", 0)
+
                 },
 
                 // ---- Спецсредства (суммы br+rezerv+remont) ----
@@ -1342,7 +1345,7 @@ public class PivotTreeBuilder
                 {
                     PropertyName = "ПлавСредства",
                     SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Плав_средства" },
+                    FilterValues = new List<string> { "Плав.средства" },
                     Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0) + fields.GetValueOrDefault("remont", 0)
                 },
                 ["Болотоходы"] = new ColumnConfig
@@ -1363,8 +1366,8 @@ public class PivotTreeBuilder
                 {
                     PropertyName = "Прочее",
                     SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Прочее" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0) + fields.GetValueOrDefault("remont", 0)
+                    FilterValues = new List<string> { "Грузовой_автомобиль", "Автобусы", "Бензовозы", "Краны", "Инженерная", "Мототехника", "Иные", "Автомобиль аэродромный" },
+                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0) 
                 },
 
                 // ---- ТО ----
@@ -1372,15 +1375,15 @@ public class PivotTreeBuilder
                 {
                     PropertyName = "Tofirst",
                     SourceTable = "sredstva",
-                    FilterValues = new List<string> { "ТО-1" },
-                    AggregateField = "to" // если есть поле "to", иначе заглушка
+                    FilterValues = new List<string> { "АЦ" },
+                    AggregateField = "to1" // если есть поле "to", иначе заглушка
                 },
                 ["Totow"] = new ColumnConfig
                 {
                     PropertyName = "Totow",
                     SourceTable = "sredstva",
-                    FilterValues = new List<string> { "ТО-2" },
-                    AggregateField = "to"
+                    FilterValues = new List<string> { "АЦ" },
+                    AggregateField = "to2"
                 },
 
                 // ---- СИЗОД ----
