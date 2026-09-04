@@ -18,7 +18,7 @@ namespace StorageI.Repositories
 
         public List<Water> LoadWaters(int subdivisionId)
         {
-            return new List<Water>();// _context.Waters
+            return new List<Water>();// _context.Waters  //TODO  разобраться со свойством навигации
                 //.Where(w => w.SubdivisionId == subdivisionId)
                 //.OrderBy(w => w.Norder)
                 //.ToList();

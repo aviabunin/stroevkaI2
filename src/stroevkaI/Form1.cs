@@ -40,6 +40,7 @@ namespace stroevkaI
         private BackgroundWorker compareAllWorker;
 
         List<PivotRow> pivotSource;
+        private ColumnVisibilityManager _columnManager;
 
         #endregion
 
@@ -109,6 +110,8 @@ namespace stroevkaI
             // Запускаем таймеры
             StartKaraulTimer();
             StartClockTimer();
+
+            _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -408,14 +411,9 @@ namespace stroevkaI
             }
         }
         string lastChoose = "";
-        /// <summary>
-        /// Почему заходит 2 раза?
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void EquipmentDataGridView_DoubleClick(object sender, EventArgs e)
         {
-            
+
             if (EquipmentDataGridView.CurrentRow != null)
             {
                 selectedItem = (FirePsgStat)EquipmentDataGridView.CurrentRow.DataBoundItem;
@@ -996,6 +994,38 @@ namespace stroevkaI
                         editorForm.ShowDialog();
                     }
                     refreshGrid(rootPsgName);
+                }
+            }
+        }
+
+        private void ЛСtoolStrip_Click(object sender, EventArgs e)
+        {
+            _columnManager.ApplyGroup("ЛичныйСостав");
+        }
+
+        private void othertoolStrip_Click(object sender, EventArgs e)
+        {
+            _columnManager.ApplyGroup("ДополнительныйСписок");            
+        }
+
+        private void BrtoolStripButton_Click(object sender, EventArgs e)
+        {
+            _columnManager.ApplyGroup("БоевойРасчёт");
+        }
+
+        private void choosColumnsStripButton_Click(object sender, EventArgs e)
+        {
+            ShowColumnSelector();
+        }
+        // Метод для вызова диалога выбора колонок
+        private void ShowColumnSelector()
+        {
+            var currentVisible = _columnManager.GetVisibleColumns();
+            using (var dlg = new ColumnSelectorDialog(ColumnGroups.ВсеКолонки, currentVisible))
+            {
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    _columnManager.ApplyVisibility(dlg.SelectedColumns);
                 }
             }
         }
