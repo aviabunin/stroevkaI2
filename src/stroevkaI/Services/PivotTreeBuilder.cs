@@ -42,8 +42,16 @@ public class PivotTreeBuilder
             .GroupBy(s => s.SubdivisionId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // 3. Строим словарь узлов по Id
-        var nodeDict = new Dictionary<int, ReportNode>();
+            var sostavBySubdiv = sostavList
+            .GroupBy(s => s.SubdivisionId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+            var sizodsBySubdiv = sizodList
+            .GroupBy(s => s.SubdivisionId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+            // 3. Строим словарь узлов по Id
+            var nodeDict = new Dictionary<int, ReportNode>();
         foreach (var psg in allNodes)
         {
             var node = new ReportNode
@@ -59,6 +67,7 @@ public class PivotTreeBuilder
             };
 
             // Заполняем RawData для листьев (только если это ПЧ, т.е. IsItog == 0)
+            // sredstva
             if (psg.Isitog == 0 && sredstvaBySubdiv.ContainsKey(psg.Id))
             {
                 var sredstvaForNode = sredstvaBySubdiv[psg.Id];
@@ -78,9 +87,27 @@ public class PivotTreeBuilder
                 node.RawData["sredstva"] = sredstvaDict;
             }
 
-            // Аналогично для других таблиц (Sostav, Sizod и т.д.) – можно вынести в отдельный метод
+            // sostav
+            if (psg.Isitog == 0 && sostavBySubdiv.ContainsKey(psg.Id))
+            {
+                var sostavForNode = sostavBySubdiv[psg.Id];
+                var sostavDict = new Dictionary<string, Dictionary<string, decimal>>();
+                foreach (var s in sostavForNode)
+                {
+                    var fields = new Dictionary<string, decimal>
+                    {
+                        ["count"] = s.Count ?? 0,
+                    };
+                    sostavDict[s.Name] = fields;
+                }
+                node.RawData["sostav"] = sostavDict;
+            }
 
-            nodeDict[psg.Id] = node;
+
+
+                // Аналогично для других таблиц (Sostav, Sizod и т.д.) – можно вынести в отдельный метод
+
+                nodeDict[psg.Id] = node;
         }
 
         // 4. Строим дерево, связывая детей с родителями
@@ -737,7 +764,7 @@ public class PivotTreeBuilder
             columnConfigs = new Dictionary<string, ColumnConfig>
             {
                 // ===============================================
-                // 1. БОЕВОЙ РАСЧЁТ (br) – таблица sredstva
+                #region 1. БОЕВОЙ РАСЧЁТ (br) – таблица sredstva
                 // ===============================================
                 ["AcBr"] = new ColumnConfig
                 {
@@ -1010,15 +1037,15 @@ public class PivotTreeBuilder
                     FilterValues = new List<string> { "Прочее" },
                     Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("remont", 0) + fields.GetValueOrDefault("rezerv", 0)
                 },
-
+                #endregion
                 // ===============================================
-                // 6. СИЗОД – таблица sizod
+                #region 6. СИЗОД – таблица sizod
                 // ===============================================
                 ["SizodBr"] = new ColumnConfig
                 {
                     PropertyName = "SizodBr",
                     SourceTable = "sizod",
-                    AggregateField = "br" // предполагается поле "br" в sizod
+                    AggregateField = "raschet" // предполагается поле "br" в sizod
                 },
                 ["SizodRezerv"] = new ColumnConfig
                 {
@@ -1026,9 +1053,9 @@ public class PivotTreeBuilder
                     SourceTable = "sizod",
                     AggregateField = "rezerv"
                 },
-
+                #endregion
                 // ===============================================
-                // 7. КОСТЮМЫ – таблица kostyms
+                #region 7. КОСТЮМЫ – таблица kostyms
                 // ===============================================
                 ["KostumyL1Task"] = new ColumnConfig
                 {
@@ -1042,9 +1069,9 @@ public class PivotTreeBuilder
                     SourceTable = "kostyms",
                     AggregateField = "tok"
                 },
-
+                #endregion
                 // ===============================================
-                // 8. ГАСИ (пена/порошок) – таблица penas
+                #region 8. (пена/порошок) – таблица penas  //TODO ошибка   - уже в средствах вроде
                 // ===============================================
                 ["GasiRaschet"] = new ColumnConfig
                 {
@@ -1058,116 +1085,134 @@ public class PivotTreeBuilder
                     SourceTable = "penas",
                     AggregateField = "pena_rezerv"
                 },
+                #endregion
                 // Если есть отдельно порошок, но в классе есть PenaRaschet и PoroshokRaschet ниже
 
                 // ===============================================
-                // 9. ЛИЧНЫЙ СОСТАВ – таблица sostav (одна запись на подразделение)
+                #region 9. ЛИЧНЫЙ СОСТАВ – таблица sostav (одна запись на подразделение)
                 // ===============================================
                 ["PoSpisku"] = new ColumnConfig
                 {
                     PropertyName = "PoSpisku",
                     SourceTable = "sostav",
-                    AggregateField = "po_spisku"
+                    FilterValues = new List<string> { "По списку" },
+                    AggregateField = "count"
                 },
                 ["Nalico"] = new ColumnConfig
                 {
                     PropertyName = "Nalico",
                     SourceTable = "sostav",
-                    AggregateField = "nalico"
+                    FilterValues = new List<string> { "По списку" },
+                    AggregateField = "count"
                 },
                 ["Vsego"] = new ColumnConfig
                 {
                     PropertyName = "Vsego",
                     SourceTable = "sostav",
-                    AggregateField = "vsego"
+                    FilterValues = new List<string> { "Всего" },
+                    AggregateField = "count"
                 },
                 ["RezervLS"] = new ColumnConfig
                 {
                     PropertyName = "RezervLS",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "rezerv" },
                     AggregateField = "rezerv"
                 },
                 ["Nk"] = new ColumnConfig
                 {
                     PropertyName = "Nk",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "nk" },
                     AggregateField = "nk"
                 },
                 ["Dispetcher"] = new ColumnConfig
                 {
                     PropertyName = "Dispetcher",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "dispetcher" },
                     AggregateField = "dispetcher"
                 },
                 ["Pnk"] = new ColumnConfig
                 {
                     PropertyName = "Pnk",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "pnk"
                 },
                 ["Ko"] = new ColumnConfig
                 {
                     PropertyName = "Ko",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "ko"
                 },
                 ["Voditel"] = new ColumnConfig
                 {
                     PropertyName = "Voditel",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "voditel"
                 },
                 ["Pozharny"] = new ColumnConfig
                 {
                     PropertyName = "Pozharny",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "pozharny"
                 },
                 ["Gdzs"] = new ColumnConfig
                 {
                     PropertyName = "Gdzs",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "gdzs"
                 },
                 ["VsegoOts"] = new ColumnConfig
                 {
                     PropertyName = "VsegoOts",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "vsego_ots"
                 },
                 ["Otpusk"] = new ColumnConfig
                 {
                     PropertyName = "Otpusk",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "otpusk"
                 },
                 ["PoBolnicnomu"] = new ColumnConfig
                 {
                     PropertyName = "PoBolnicnomu",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "po_bolnicnomu"
                 },
                 ["Komandirovka"] = new ColumnConfig
                 {
                     PropertyName = "Komandirovka",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "komandirovka"
                 },
                 ["Nekomplekt"] = new ColumnConfig
                 {
                     PropertyName = "Nekomplekt",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "nekomplekt"
                 },
                 ["ProchieOts"] = new ColumnConfig
                 {
                     PropertyName = "ProchieOts",
                     SourceTable = "sostav",
+                    FilterValues = new List<string> { "По списку" },
                     AggregateField = "prochie_ots"
                 },
-
+                #endregion
                 // ===============================================
-                // 10. ПЕНА И ПОРОШОК – таблица penas (детализировано)
+                #region 10. ПЕНА И ПОРОШОК – таблица penas (детализировано)
                 // ===============================================
                 ["PenaRaschet"] = new ColumnConfig
                 {
@@ -1193,9 +1238,10 @@ public class PivotTreeBuilder
                     SourceTable = "penas",
                     AggregateField = "poroshok_rezerv"
                 },
+                #endregion
 
                 // ===============================================
-                // 11. ТОПЛИВО – из какой таблицы? Пока заглушка 0.
+                #region 11. ТОПЛИВО –  - из sredstva
                 // Если есть отдельная таблица, замените.
                 // ===============================================
                 ["Dt"] = new ColumnConfig
@@ -1212,6 +1258,7 @@ public class PivotTreeBuilder
                     FilterValues = new List<string> { "Бензин" },
                     Compute = fields => 0 // заглушка
                 }
+                #endregion
             };
         }
     private void InitializeColumnConfigs()
