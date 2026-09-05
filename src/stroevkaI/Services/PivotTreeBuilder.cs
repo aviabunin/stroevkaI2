@@ -64,7 +64,7 @@ public class PivotTreeBuilder
                 Isitog = psg.Isitog ?? 0,
                 Norder = (int)psg.Norder,
                 RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
-            };
+            };//расчёт ЛС
 
             // Заполняем RawData для листьев (только если это ПЧ, т.е. IsItog == 0)
             // sredstva
@@ -92,8 +92,11 @@ public class PivotTreeBuilder
             {
                 var sostavForNode = sostavBySubdiv[psg.Id];
                 var sostavDict = new Dictionary<string, Dictionary<string, decimal>>();
-                foreach (var s in sostavForNode)
+                    List<string> ЛСГдзс = new List<string>() { "НК", "ПНК", "КО", "Водители", "Пожарные" };
+                foreach (var s in sostavForNode)// если  
                 {
+                    if (ЛСГдзс.Contains(s.Name) && !s.SostavVid.Contains("Боевой"))
+                            continue;
                     var fields = new Dictionary<string, decimal>
                     {
                         ["count"] = s.Count ?? 0,
@@ -363,8 +366,8 @@ public class PivotTreeBuilder
             var всегоПСГrow = CreateCategoryRow(psgNode, "ГПС", gpsLeaves);
         rows.Add(всегоПСГrow);
 
-        // 2. другие 
-        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС"  && kv.Key != "ВПО" && kv.Key != "АСФ" && kv.Key != "ЧПО").SelectMany(kv => kv.Value).ToList();
+            // 2. другие && kv.Key != "ЧПО"   && kv.Key != "ВПО" 
+            var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС"  && kv.Key != "АСФ" ).SelectMany(kv => kv.Value).ToList();
         rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
         // 2. други1
         var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
@@ -759,519 +762,18 @@ public class PivotTreeBuilder
             // ... и т.д.
         };
     }
-    private void InitializeColumnConfigsOld11()
-        {
-            columnConfigs = new Dictionary<string, ColumnConfig>
-            {
-                // ===============================================
-                #region 1. БОЕВОЙ РАСЧЁТ (br) – таблица sredstva
-                // ===============================================
-                ["AcBr"] = new ColumnConfig
-                {
-                    PropertyName = "AcBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЦ" },
-                    AggregateField = "br"
-                },
-                ["AclBr"] = new ColumnConfig
-                {
-                    PropertyName = "AclBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЦЛ" },
-                    AggregateField = "br"
-                },
-                ["AvBr"] = new ColumnConfig
-                {
-                    PropertyName = "AvBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АВ" },
-                    AggregateField = "br"
-                },
-                ["AcaAppBr"] = new ColumnConfig
-                {
-                    PropertyName = "AcaAppBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АСА", "АПП" }, // объединяем два типа
-                    AggregateField = "br"
-                },
-                ["PnsBr"] = new ColumnConfig
-                {
-                    PropertyName = "PnsBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "ПНС" },
-                    AggregateField = "br"
-                },
-                ["AlBr"] = new ColumnConfig
-                {
-                    PropertyName = "AlBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЛ" },
-                    AggregateField = "br"
-                },
-                ["KpBr"] = new ColumnConfig
-                {
-                    PropertyName = "KpBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "КП" },
-                    AggregateField = "br"
-                },
-                ["ArBr"] = new ColumnConfig
-                {
-                    PropertyName = "ArBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АР" },
-                    AggregateField = "br"
-                },
-                ["AsmpBr"] = new ColumnConfig
-                {
-                    PropertyName = "AsmpBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АСМП" },
-                    AggregateField = "br"
-                },
-                ["AshBr"] = new ColumnConfig
-                {
-                    PropertyName = "AshBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АШ" },
-                    AggregateField = "br"
-                },
-                ["UksBr"] = new ColumnConfig
-                {
-                    PropertyName = "UksBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "УКС", "АБГ" },
-                    AggregateField = "br"
-                },
-                ["FireTrainBr"] = new ColumnConfig
-                {
-                    PropertyName = "FireTrainBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Пож. поезд" },
-                    AggregateField = "br"
-                },
-                ["PozhKorablBr"] = new ColumnConfig
-                {
-                    PropertyName = "PozhKorablBr",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Пожарный_корабль" },
-                    AggregateField = "br"
-                },
 
-                // ===============================================
-                // 2. РЕЗЕРВ (rezerv) – таблица sredstva
-                // ===============================================
-                ["AcRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AcRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЦ" },
-                    AggregateField = "rezerv"
-                },
-                ["AclRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AclRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЦЛ" },
-                    AggregateField = "rezerv"
-                },
-                ["AnrRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AnrRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АНР" },
-                    AggregateField = "rezerv"
-                },
-                ["AvRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AvRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АВ" },
-                    AggregateField = "rezerv"
-                },
-                ["AcaAppRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AcaAppRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АСА", "АПП" },
-                    AggregateField = "rezerv"
-                },
-                ["PnsRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "PnsRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "ПНС" },
-                    AggregateField = "rezerv"
-                },
-                ["AlRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AlRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЛ" },
-                    AggregateField = "rezerv"
-                },
-                ["KpRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "KpRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "КП" },
-                    AggregateField = "rezerv"
-                },
-                ["ArRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "ArRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АР" },
-                    AggregateField = "rezerv"
-                },
-                ["AsmpRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AsmpRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АСМП" },
-                    AggregateField = "rezerv"
-                },
-                ["AshRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AshRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АШ" },
-                    AggregateField = "rezerv"
-                },
-                ["UksRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "UksRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "УКС", "АБГ" },
-                    AggregateField = "rezerv"
-                },
-                ["AsmrhRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AsmrhRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АСМПХ" },
-                    AggregateField = "rezerv"
-                },
-                ["AvsRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "AvsRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АВС" },
-                    AggregateField = "rezerv"
-                },
-                ["PozhKorablRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "PozhKorablRezerv",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Пожарный_корабль" },
-                    AggregateField = "rezerv"
-                },
-
-                // ===============================================
-                // 3. РЕМОНТ (remont) – таблица sredstva
-                // ===============================================
-                ["RemontOsnovnoy"] = new ColumnConfig
-                {
-                    PropertyName = "RemontOsnovnoy",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЦ", "АЦЛ", "АВ", "АСА", "АПП", "ПНС", "АНР" },
-                    AggregateField = "remont"
-                },
-                // Ремонт спецтехники – пока неизвестно, какие типы считать спецтехникой.
-                // Устанавливаем заглушку 0. При необходимости замените на список типов.
-                ["RemontSpetsialnoy"] = new ColumnConfig
-                {
-                    PropertyName = "RemontSpetsialnoy",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string>(), // пустой список – ничего не суммируется
-                    Compute = fields => 0 // можно переопределить позже
-                },
-
-                // ===============================================
-                // 4. ТО (техобслуживание) – возможно, из другой таблицы.
-                // Пока ставим заглушку 0. Если данные есть в sredstva, уточните названия.
-                // ===============================================
-                ["Tofirst"] = new ColumnConfig
-                {
-                    PropertyName = "Tofirst",
-                    SourceTable = "sredstva", // предположительно
-                    FilterValues = new List<string> { "ТО-1" },
-                    AggregateField = "to" // если есть такое поле, иначе Compute = 0
-                },
-                ["Totow"] = new ColumnConfig
-                {
-                    PropertyName = "Totow",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "ТО-2" },
-                    AggregateField = "to"
-                },
-
-                // ===============================================
-                // 5. СПЕЦТЕХНИКА ИЗ СРЕДСТВ (суммы)
-                // ===============================================
-                ["PlavSredstva"] = new ColumnConfig
-                {
-                    PropertyName = "PlavSredstva",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Плав_средства" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("remont", 0) + fields.GetValueOrDefault("rezerv", 0)
-                },
-                ["Bolotohody"] = new ColumnConfig
-                {
-                    PropertyName = "Bolotohody",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Болотоходы" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("remont", 0) + fields.GetValueOrDefault("rezerv", 0)
-                },
-                ["Motopompy"] = new ColumnConfig
-                {
-                    PropertyName = "Motopompy",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Мотопомпы" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("remont", 0) + fields.GetValueOrDefault("rezerv", 0)
-                },
-                ["Prochee"] = new ColumnConfig
-                {
-                    PropertyName = "Prochee",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Прочее" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("remont", 0) + fields.GetValueOrDefault("rezerv", 0)
-                },
-                #endregion
-                // ===============================================
-                #region 6. СИЗОД – таблица sizod
-                // ===============================================
-                ["SizodBr"] = new ColumnConfig
-                {
-                    PropertyName = "SizodBr",
-                    SourceTable = "sizod",
-                    AggregateField = "raschet" // предполагается поле "br" в sizod
-                },
-                ["SizodRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "SizodRezerv",
-                    SourceTable = "sizod",
-                    AggregateField = "rezerv"
-                },
-                #endregion
-                // ===============================================
-                #region 7. КОСТЮМЫ – таблица kostyms
-                // ===============================================
-                ["KostumyL1Task"] = new ColumnConfig
-                {
-                    PropertyName = "KostumyL1Task",
-                    SourceTable = "kostyms",
-                    AggregateField = "l1_task" // предположительно поле для Л1/ОЗК/ТАСК
-                },
-                ["KostumyTok"] = new ColumnConfig
-                {
-                    PropertyName = "KostumyTok",
-                    SourceTable = "kostyms",
-                    AggregateField = "tok"
-                },
-                #endregion
-                // ===============================================
-                #region 8. (пена/порошок) – таблица penas  //TODO ошибка   - уже в средствах вроде
-                // ===============================================
-                ["GasiRaschet"] = new ColumnConfig
-                {
-                    PropertyName = "GasiRaschet",
-                    SourceTable = "penas",
-                    AggregateField = "pena_br" // или "poroshok_br"? скорее пена в расчёте
-                },
-                ["GasiRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "GasiRezerv",
-                    SourceTable = "penas",
-                    AggregateField = "pena_rezerv"
-                },
-                #endregion
-                // Если есть отдельно порошок, но в классе есть PenaRaschet и PoroshokRaschet ниже
-
-                // ===============================================
-                #region 9. ЛИЧНЫЙ СОСТАВ – таблица sostav (одна запись на подразделение)
-                // ===============================================
-                ["PoSpisku"] = new ColumnConfig
-                {
-                    PropertyName = "PoSpisku",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "count"
-                },
-                ["Nalico"] = new ColumnConfig
-                {
-                    PropertyName = "Nalico",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "count"
-                },
-                ["Vsego"] = new ColumnConfig
-                {
-                    PropertyName = "Vsego",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "Всего" },
-                    AggregateField = "count"
-                },
-                ["RezervLS"] = new ColumnConfig
-                {
-                    PropertyName = "RezervLS",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "rezerv" },
-                    AggregateField = "rezerv"
-                },
-                ["Nk"] = new ColumnConfig
-                {
-                    PropertyName = "Nk",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "nk" },
-                    AggregateField = "nk"
-                },
-                ["Dispetcher"] = new ColumnConfig
-                {
-                    PropertyName = "Dispetcher",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "dispetcher" },
-                    AggregateField = "dispetcher"
-                },
-                ["Pnk"] = new ColumnConfig
-                {
-                    PropertyName = "Pnk",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "pnk"
-                },
-                ["Ko"] = new ColumnConfig
-                {
-                    PropertyName = "Ko",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "ko"
-                },
-                ["Voditel"] = new ColumnConfig
-                {
-                    PropertyName = "Voditel",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "voditel"
-                },
-                ["Pozharny"] = new ColumnConfig
-                {
-                    PropertyName = "Pozharny",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "pozharny"
-                },
-                ["Gdzs"] = new ColumnConfig
-                {
-                    PropertyName = "Gdzs",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "gdzs"
-                },
-                ["VsegoOts"] = new ColumnConfig
-                {
-                    PropertyName = "VsegoOts",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "vsego_ots"
-                },
-                ["Otpusk"] = new ColumnConfig
-                {
-                    PropertyName = "Otpusk",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "otpusk"
-                },
-                ["PoBolnicnomu"] = new ColumnConfig
-                {
-                    PropertyName = "PoBolnicnomu",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "po_bolnicnomu"
-                },
-                ["Komandirovka"] = new ColumnConfig
-                {
-                    PropertyName = "Komandirovka",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "komandirovka"
-                },
-                ["Nekomplekt"] = new ColumnConfig
-                {
-                    PropertyName = "Nekomplekt",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "nekomplekt"
-                },
-                ["ProchieOts"] = new ColumnConfig
-                {
-                    PropertyName = "ProchieOts",
-                    SourceTable = "sostav",
-                    FilterValues = new List<string> { "По списку" },
-                    AggregateField = "prochie_ots"
-                },
-                #endregion
-                // ===============================================
-                #region 10. ПЕНА И ПОРОШОК – таблица penas (детализировано)
-                // ===============================================
-                ["PenaRaschet"] = new ColumnConfig
-                {
-                    PropertyName = "PenaRaschet",
-                    SourceTable = "penas",
-                    AggregateField = "pena_br"
-                },
-                ["PoroshokRaschet"] = new ColumnConfig
-                {
-                    PropertyName = "PoroshokRaschet",
-                    SourceTable = "penas",
-                    AggregateField = "poroshok_br"
-                },
-                ["PenaRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "PenaRezerv",
-                    SourceTable = "penas",
-                    AggregateField = "pena_rezerv"
-                },
-                ["PoroshokRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "PoroshokRezerv",
-                    SourceTable = "penas",
-                    AggregateField = "poroshok_rezerv"
-                },
-                #endregion
-
-                // ===============================================
-                #region 11. ТОПЛИВО –  - из sredstva
-                // Если есть отдельная таблица, замените.
-                // ===============================================
-                ["Dt"] = new ColumnConfig
-                {
-                    PropertyName = "Dt",
-                    SourceTable = "sredstva", // предположительно, но может быть отдельная таблица "toplivo"
-                    FilterValues = new List<string> { "ДТ" },
-                    Compute = fields => 0 // заглушка
-                },
-                ["Benzin"] = new ColumnConfig
-                {
-                    PropertyName = "Benzin",
-                    SourceTable = "sredstva",
-                    FilterValues = new List<string> { "Бензин" },
-                    Compute = fields => 0 // заглушка
-                }
-                #endregion
-            };
-        }
     private void InitializeColumnConfigs()
         {
             columnConfigs = new Dictionary<string, ColumnConfig>
             {
-                // ---- Боевой расчёт (br), резерв (rezerv), ремонт (remont) для каждого типа техники ----
+                #region ---- Боевой расчёт (br), резерв (rezerv), ремонт (remont) для каждого типа техники ----
                 // АЦ
-                ["AcBr"] = new ColumnConfig 
-                    { PropertyName = "AcBr", 
-                      SourceTable = "sredstva", 
-                      FilterValues = new List<string> { "АЦ" }, 
-                      AggregateField = "br" },
+                ["AcBr"] = new ColumnConfig
+                { PropertyName = "AcBr",
+                    SourceTable = "sredstva",
+                    FilterValues = new List<string> { "АЦ" },
+                    AggregateField = "br" },
                 ["AcRezerv"] = new ColumnConfig { PropertyName = "AcRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "rezerv" },
                 ["AcRemont"] = new ColumnConfig { PropertyName = "AcRemont", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "remont" },
 
@@ -1375,7 +877,7 @@ public class PivotTreeBuilder
                 {
                     PropertyName = "РемонтСпециальной",
                     SourceTable = "sredstva",
-                    FilterValues = new List<string> { "АЛ", "КП", "АР", "АСМП", "ПСА", "АШ", "АСМ", "АСМРХ", "АВС", "УКС", "АБГ", "АКП", "АЛ-30", "АЛ-50" }, 
+                    FilterValues = new List<string> { "АЛ", "КП", "АР", "АСМП", "ПСА", "АШ", "АСМ", "АСМРХ", "АВС", "УКС", "АБГ", "АКП", "АЛ-30", "АЛ-50" },
                     AggregateField = "remont"
                 },
                 ["ПожарныйКорабльРемонт"] = new ColumnConfig
@@ -1383,7 +885,7 @@ public class PivotTreeBuilder
                     PropertyName = "ПожарныйКорабльРемонт",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "Пожарный_корабль" },
-                    Compute = fields =>  fields.GetValueOrDefault("rezerv", 0) + fields.GetValueOrDefault("remont", 0)
+                    Compute = fields => fields.GetValueOrDefault("rezerv", 0) + fields.GetValueOrDefault("remont", 0)
 
                 },
 
@@ -1414,7 +916,7 @@ public class PivotTreeBuilder
                     PropertyName = "Прочее",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "Грузовой_автомобиль", "Автобусы", "Бензовозы", "Краны", "Инженерная", "Мототехника", "Иные", "Автомобиль аэродромный" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0) 
+                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0)
                 },
 
                 // ---- ТО ----
@@ -1432,8 +934,8 @@ public class PivotTreeBuilder
                     FilterValues = new List<string> { "АЦ" },
                     AggregateField = "to2"
                 },
-
-                // ---- СИЗОД ----
+                #endregion
+                #region ---- СИЗОД ----
                 ["SizodBr"] = new ColumnConfig
                 {
                     PropertyName = "SizodBr",
@@ -1446,8 +948,8 @@ public class PivotTreeBuilder
                     SourceTable = "sizod",
                     AggregateField = "rezerv"
                 },
-
-                // ---- Костюмы ----
+                #endregion
+                #region ---- Костюмы ----
                 ["КостюмыЛ1Таск"] = new ColumnConfig
                 {
                     PropertyName = "КостюмыЛ1Таск",
@@ -1466,33 +968,33 @@ public class PivotTreeBuilder
                     SourceTable = "kostyms",
                     AggregateField = "other" // предположим
                 },
-
-                // ---- Личный состав (sostav) ----
-                ["Нк"] = new ColumnConfig { PropertyName = "Нк", SourceTable = "sostav", AggregateField = "nk" },
-                ["Диспетчер"] = new ColumnConfig { PropertyName = "Диспетчер", SourceTable = "sostav", AggregateField = "dispetcher" },
-                ["Пнк"] = new ColumnConfig { PropertyName = "Пнк", SourceTable = "sostav", AggregateField = "pnk" },
-                ["Ко"] = new ColumnConfig { PropertyName = "Ко", SourceTable = "sostav", AggregateField = "ko" },
-                ["Водитель"] = new ColumnConfig { PropertyName = "Водитель", SourceTable = "sostav", AggregateField = "voditel" },
-                ["Пожарный"] = new ColumnConfig { PropertyName = "Пожарный", SourceTable = "sostav", AggregateField = "pozharny" },
-                ["Гдзс"] = new ColumnConfig { PropertyName = "Гдзс", SourceTable = "sostav", AggregateField = "gdzs" },
-                ["ПоСписку"] = new ColumnConfig { PropertyName = "ПоСписку", SourceTable = "sostav", AggregateField = "po_spisku" },
-                ["Налицо"] = new ColumnConfig { PropertyName = "Налицо", SourceTable = "sostav", AggregateField = "nalico" },
-                ["Всего"] = new ColumnConfig { PropertyName = "Всего", SourceTable = "sostav", AggregateField = "vsego" },
-                ["Резерв"] = new ColumnConfig { PropertyName = "Резерв", SourceTable = "sostav", AggregateField = "rezerv" },
-
-                // ---- ГАСИ (пена/порошок) ----
+                #endregion
+                #region ---- Личный состав (sostav) ----
+                ["Нк"] = new ColumnConfig { PropertyName = "Нк", SourceTable = "sostav", FilterValues = new List<string> { "НК" }, AggregateField = "count" },
+                ["Диспетчер"] = new ColumnConfig { PropertyName = "Диспетчер", SourceTable = "sostav", FilterValues = new List<string> { "Диспетчер" }, AggregateField = "count" },
+                ["Пнк"] = new ColumnConfig { PropertyName = "Пнк", SourceTable = "sostav", FilterValues = new List<string> { "ПНК" }, AggregateField = "count" },
+                ["Ко"] = new ColumnConfig { PropertyName = "Ко", SourceTable = "sostav", FilterValues = new List<string> { "КО" }, AggregateField = "count" },
+                ["Водитель"] = new ColumnConfig { PropertyName = "Водитель", SourceTable = "sostav", FilterValues = new List<string> { "Водители" }, AggregateField = "count" },
+                ["Пожарный"] = new ColumnConfig { PropertyName = "Пожарный", SourceTable = "sostav", FilterValues = new List<string> { "Пожарные" }, AggregateField = "count" },
+                ["Гдзс"] = new ColumnConfig { PropertyName = "Гдзс", SourceTable = "sostav", FilterValues = new List<string> { "НК", "ПНК", "КО", "Водители", "Пожарные" }, AggregateField = "count" },  //(`st`.`sostav_vid` = '3 ГДЗС')
+                ["ПоСписку"] = new ColumnConfig { PropertyName = "ПоСписку", SourceTable = "sostav", FilterValues = new List<string> { "По списку" }, AggregateField = "count" },
+                ["Налицо"] = new ColumnConfig { PropertyName = "Налицо", SourceTable = "sostav", FilterValues = new List<string> { "ПНК", "КО", "Водители", "Пожарные", "НК", "Диспетчер" }, AggregateField = "count" },
+                ["Всего"] = new ColumnConfig { PropertyName = "Всего", SourceTable = "sostav", FilterValues = new List<string> { "ПНК", "КО", "Водители", "Пожарные", "НК" }, AggregateField = "count" },
+                ["Резерв"] = new ColumnConfig { PropertyName = "Резерв", SourceTable = "sostav", FilterValues = new List<string> { "резерв" }, AggregateField = "count" },//TODO только отсутствующие 
+                #endregion
+                #region ---- ГАСИ (пена/порошок) ----
                 ["ГасиРасчёт"] = new ColumnConfig { PropertyName = "ГасиРасчёт", SourceTable = "penas", AggregateField = "pena_br" },
                 ["ГасиРезерв"] = new ColumnConfig { PropertyName = "ГасиРезерв", SourceTable = "penas", AggregateField = "pena_rezerv" },
-
-                // ---- Отсутствующие (sostav) ----
+                #endregion
+                #region ---- Отсутствующие (sostav) ----
                 ["ВсегоОтс"] = new ColumnConfig { PropertyName = "ВсегоОтс", SourceTable = "sostav", AggregateField = "vsego_ots" },
                 ["Отпуск"] = new ColumnConfig { PropertyName = "Отпуск", SourceTable = "sostav", AggregateField = "otpusk" },
                 ["ПоБольничному"] = new ColumnConfig { PropertyName = "ПоБольничному", SourceTable = "sostav", AggregateField = "po_bolnicnomu" },
                 ["Командировка"] = new ColumnConfig { PropertyName = "Командировка", SourceTable = "sostav", AggregateField = "komandirovka" },
                 ["Некомплект"] = new ColumnConfig { PropertyName = "Некомплект", SourceTable = "sostav", AggregateField = "nekomplekt" },
                 ["ПрочиеОтс"] = new ColumnConfig { PropertyName = "ПрочиеОтс", SourceTable = "sostav", AggregateField = "prochie_ots" },
-
-                // ---- Пена и порошок (детализированные) ----
+                #endregion
+                #region ---- Пена и порошок (детализированные) топливо ----
                 ["ПенаРасчёт"] = new ColumnConfig { PropertyName = "ПенаРасчёт", SourceTable = "penas", AggregateField = "pena_br" },
                 ["ПенаРезерв"] = new ColumnConfig { PropertyName = "ПенаРезерв", SourceTable = "penas", AggregateField = "pena_rezerv" },
                 ["ПорошокРасчёт"] = new ColumnConfig { PropertyName = "ПорошокРасчёт", SourceTable = "penas", AggregateField = "poroshok_br" },
@@ -1513,6 +1015,7 @@ public class PivotTreeBuilder
                     FilterValues = new List<string> { "Бензин" },
                     Compute = fields => 0 // заглушка
                 }
+                #endregion
             };
         }
 
@@ -1538,119 +1041,6 @@ public class PivotTreeBuilder
             var type = prop.PropertyType;
             return type == typeof(decimal) || type == typeof(decimal?);
         }
-
-    }
-    public class PivotRow1
-    {
-        // --- Иерархия ---
-        public string ПСГ { get; set; }
-        public string ПЧ { get; set; }
-        public string Category { get; set; }
-        public int PchId { get; set; }
-        public int? Parent { get; set; }
-        public int Norder { get; set; }
-        public int Isitog { get; set; }
-        public List<PivotRow> Childes = new List<PivotRow>();
-
-        // --- Колонки (свойства, соответствующие DataPropertyName в гриде) ---
-
-        // Боевой расчёт (br)
-        public decimal AcBr { get; set; }               // АЦ
-        public decimal AclBr { get; set; }              // АЦЛ
-        public decimal AvBr { get; set; }               // АВ
-        public decimal AcaAppBr { get; set; }           // АСА/АПП
-        public decimal PnsBr { get; set; }              // ПНС
-        public decimal AlBr { get; set; }               // АЛ
-        public decimal KpBr { get; set; }               // КП
-        public decimal ArBr { get; set; }               // АР
-        public decimal AsmpBr { get; set; }             // АСМП
-        public decimal AshBr { get; set; }              // АШ
-        public decimal UksBr { get; set; }              // УКС / АБГ
-        public decimal FireTrainBr { get; set; }        // Пож. поезд
-        public decimal PozhKorablBr { get; set; }       // Пож. корабль/катер
-
-        // Резерв (rezerv)
-        public decimal AcRezerv { get; set; }
-        public decimal AclRezerv { get; set; }
-        public decimal AnrRezerv { get; set; }
-        public decimal AvRezerv { get; set; }
-        public decimal AcaAppRezerv { get; set; }
-        public decimal PnsRezerv { get; set; }
-        public decimal AlRezerv { get; set; }
-        public decimal KpRezerv { get; set; }
-        public decimal ArRezerv { get; set; }
-        public decimal AsmpRezerv { get; set; }
-        public decimal AshRezerv { get; set; }
-        public decimal UksRezerv { get; set; }
-        public decimal AsmrhRezerv { get; set; }        // АСМПХ
-        public decimal AvsRezerv { get; set; }          // АВС
-        public decimal PozhKorablRezerv { get; set; }   // Пож. корабль/катер резерв
-
-        // Ремонт (remont)
-        public decimal RemontOsnovnoy { get; set; }     // основная техника
-        public decimal RemontSpetsialnoy { get; set; }  // спецтехника
-
-        // ТО
-        public decimal Tofirst { get; set; }            // ТО-1
-        public decimal Totow { get; set; }              // ТО-2
-
-        // Прочие средства (из других таблиц)
-        public decimal PlavSredstva { get; set; }       // плавсредства
-        public decimal Bolotohody { get; set; }         // снегоходы/болотоходы
-        public decimal Motopompy { get; set; }          // мотопомпы
-        public decimal Prochee { get; set; }            // прочее
-
-        // СИЗОД
-        public decimal SizodBr { get; set; }            // в расчёте
-        public decimal SizodRezerv { get; set; }        // в резерве
-
-        // Костюмы
-        public decimal KostumyL1Task { get; set; }      // Л1/ОЗК/ТАСК
-        public decimal KostumyTok { get; set; }         // ТОК
-
-        // ГАСИ
-        public decimal GasiRaschet { get; set; }        // в расчёте
-        public decimal GasiRezerv { get; set; }         // в резерве
-
-        // Личный состав
-        public decimal PoSpisku { get; set; }
-        public decimal Nalico { get; set; }
-        public decimal Vsego { get; set; }
-        public decimal RezervLS { get; set; }
-        public decimal Nk { get; set; }                 // начальник караула
-        public decimal Dispetcher { get; set; }
-        public decimal Pnk { get; set; }
-        public decimal Ko { get; set; }                 // командир отделения
-        public decimal Voditel { get; set; }
-        public decimal Pozharny { get; set; }
-        public decimal Gdzs { get; set; }
-        public decimal VsegoOts { get; set; }
-        public decimal Otpusk { get; set; }
-        public decimal PoBolnicnomu { get; set; }
-        public decimal Komandirovka { get; set; }
-        public decimal Nekomplekt { get; set; }
-        public decimal ProchieOts { get; set; }
-
-        // Пена и порошок
-        public decimal PenaRaschet { get; set; }
-        public decimal PoroshokRaschet { get; set; }
-        public decimal PenaRezerv { get; set; }
-        public decimal PoroshokRezerv { get; set; }
-
-        // Топливо
-        public decimal Dt { get; set; }                 // дизтопливо
-        public decimal Benzin { get; set; }             // бензин
-
-        // Начкар (текстовое поле) – в FirePsgStat это string? В гриде Column53_67 – "Начкар". Оставим как string.
-        public string Nachkar { get; set; }
-
-        // Datafilled – булево (показывает, заполнена ли строка)
-        public bool Datafilled { get; set; }
-
-        /// <summary>
-        /// Детали для каждой колонки (ключ – имя свойства/колонки, значение – список объектов с именем и значением)
-        /// </summary>
-        public Dictionary<string, List<DetailItem>> CellDetails { get; set; } = new Dictionary<string, List<DetailItem>>();
 
     }
     public class PivotRow
