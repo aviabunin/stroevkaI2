@@ -12,6 +12,7 @@ public class PivotTreeBuilder
     ReportNode root = null;
     static Dictionary<int, List<PivotRow>> psgChildes;
     public static stroevkaContext _context = new stroevkaContext();
+        public static Dictionary<int, CacheNachkar> nachkarBySubdiv;
 
     public PivotTreeBuilder()
     {
@@ -36,6 +37,7 @@ public class PivotTreeBuilder
         //var watersList = _context.Waters.ToList();
         var contactsList = _context.Contacts.ToList();
         var psgdataList = _context.Psgdata.ToList();
+        var nachkarsList = _context.CacheNachkars.ToList();
 
             // Группируем данные по subdivision_id (Id узла)
             var sredstvaBySubdiv = sredstvaList
@@ -53,6 +55,18 @@ public class PivotTreeBuilder
             var sizodsBySubdiv = sizodList
             .GroupBy(s => s.SubdivisionId)
             .ToDictionary(g => g.Key, g => g.ToList());
+
+            var penasBySubdiv = penasList
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var kostymsBySubdiv = kostymsList
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+             nachkarBySubdiv = nachkarsList
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.FirstOrDefault());
 
             // 3. Строим словарь узлов по Id
             var nodeDict = new Dictionary<int, ReportNode>();
@@ -110,7 +124,7 @@ public class PivotTreeBuilder
                         node.RawData["sostav"] = sostavDict;
                     }
             }
-                // spsgdata
+            // spsgdata
             if (psg.Isitog == 0 && psgdataBySubdiv.ContainsKey(psg.Id))
             {
                 if (psgdataBySubdiv.TryGetValue(psg.Id, out var psgdataForNode))
@@ -130,7 +144,73 @@ public class PivotTreeBuilder
                 }
             }
 
-                // Аналогично для других таблиц (Sostav, Sizod и т.д.) – можно вынести в отдельный метод
+            // penas
+            if (psg.Isitog == 0 && penasBySubdiv.ContainsKey(psg.Id))
+            {
+                if (penasBySubdiv.TryGetValue(psg.Id, out var penasForNode))
+                {
+                    var penasDict = new Dictionary<string, Dictionary<string, decimal>>();
+                    foreach (var s in penasForNode)
+                    {
+                        // Создаём уникальный ключ: 
+                        string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
+                        var fields = new Dictionary<string, decimal>
+                        {
+                            ["inwork"] = s.Inwork ?? 0,
+                            ["inrezerv"] = s.Inrezerv ?? 0,
+                        };
+                        penasDict[key] = fields;
+                    }
+                    node.RawData["penas"] = penasDict;
+                }
+            }
+            // sizod
+            if (psg.Isitog == 0 && sizodsBySubdiv.ContainsKey(psg.Id))
+            {
+                if (sizodsBySubdiv.TryGetValue(psg.Id, out var sizodForNode))
+                {
+                    var sizodDict = new Dictionary<string, Dictionary<string, decimal>>();
+                    foreach (var s in sizodForNode)
+                    {
+                        // Создаём уникальный ключ: 
+                        string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
+                        var fields = new Dictionary<string, decimal>
+                        {
+                            ["raschet"] = s.Raschet ?? 0,
+                            ["rezerv"] = s.Rezerv ?? 0,
+                        };
+                            if (s.Raschet + s.Rezerv == 0)
+                                continue;
+                        sizodDict[key] = fields;
+                    }
+                    node.RawData["sizod"] = sizodDict;
+                }
+            }
+                
+            // kostyms
+            if (psg.Isitog == 0 && kostymsBySubdiv.ContainsKey(psg.Id))
+                {
+                    if (kostymsBySubdiv.TryGetValue(psg.Id, out var kostymsForNode))
+                    {
+                        var kostymsDict = new Dictionary<string, Dictionary<string, decimal>>();
+                        foreach (var s in kostymsForNode)
+                        {
+                            // Создаём уникальный ключ: 
+                            string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
+                            var fields = new Dictionary<string, decimal>
+                            {
+                                ["n"] = s.N ?? 0,
+                            };
+
+                            kostymsDict[key] = fields;
+                        }
+                        node.RawData["kostyms"] = kostymsDict;
+                    }
+                }
+
+
+
+                //начкар   nachkarBySubdiv
 
                 nodeDict[psg.Id] = node;
         }
@@ -516,7 +596,8 @@ public class PivotTreeBuilder
             SetProperty(row, propName, value);
         }
         row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
-            // Nachkar и Datafilled – как было
+            row.Начкар = nachkarBySubdiv[leaf.Id].Nachkar;
+                //и Datafilled – как было
             // ...
 
             return row;
@@ -828,7 +909,7 @@ public class PivotTreeBuilder
                     Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0)
                 },
 
-                // ---- ТО ----
+                #region ---- ТО ----
                 ["Tofirst"] = new ColumnConfig
                 {
                     PropertyName = "Tofirst",
@@ -844,38 +925,34 @@ public class PivotTreeBuilder
                     AggregateField = "to2"
                 },
                 #endregion
+                #endregion
                 #region ---- СИЗОД ----
-                ["SizodBr"] = new ColumnConfig
-                {
-                    PropertyName = "SizodBr",
-                    SourceTable = "sizod",
-                    AggregateField = "br"
-                },
-                ["SizodRezerv"] = new ColumnConfig
-                {
-                    PropertyName = "SizodRezerv",
-                    SourceTable = "sizod",
-                    AggregateField = "rezerv"
-                },
+                //["ПенаРасчёт"] = new ColumnConfig { PropertyName = "ПенаРасчёт", SourceTable = "penas", FilterValues = new List<string> { "Пенообразователь" }, AggregateField = "inwork" },
+                ["SizodBr"] = new ColumnConfig{PropertyName = "SizodBr",SourceTable = "sizod", Compute = fields => fields.GetValueOrDefault("raschet", 0)},
+                ["SizodRezerv"] = new ColumnConfig { PropertyName = "SizodRezerv", SourceTable = "sizod", Compute = fields => fields.GetValueOrDefault("rezerv", 0)},
+ 
                 #endregion
                 #region ---- Костюмы ----
                 ["КостюмыЛ1Таск"] = new ColumnConfig
                 {
                     PropertyName = "КостюмыЛ1Таск",
-                    SourceTable = "kostyms",
-                    AggregateField = "l1_task" // предположим
+                    SourceTable = "kostyms",                    
+                    FilterValues = new List<string> { "Л-1","ТАСК", "ОЗК" },
+                    AggregateField = "n" 
                 },
                 ["КостюмыТок"] = new ColumnConfig
                 {
                     PropertyName = "КостюмыТок",
                     SourceTable = "kostyms",
-                    AggregateField = "tok"
+                    FilterValues = new List<string> { "ТОК"},
+                    AggregateField = "n"
                 },
                 ["КостюмыДругие"] = new ColumnConfig
                 {
                     PropertyName = "КостюмыДругие",
                     SourceTable = "kostyms",
-                    AggregateField = "other" // предположим
+                    FilterValues = new List<string> { "ОЗК" },
+                    AggregateField = "n"
                 },
                 #endregion
                 #region ---- Личный состав (sostav) ----
@@ -892,10 +969,7 @@ public class PivotTreeBuilder
                 ["Всего"] = new ColumnConfig { PropertyName = "Всего", SourceTable = "sostav", FilterValues =lstВсего, AggregateField = "count" },
                 ["Резерв"] = new ColumnConfig { PropertyName = "Резерв", SourceTable = "sostav", FilterValues = new List<string> { "резерв" }, AggregateField = "count" },//TODO только отсутствующие 
                 #endregion
-                #region ---- ГАСИ (пена/порошок) ----
-                ["ГасиРасчёт"] = new ColumnConfig { PropertyName = "ГасиРасчёт", SourceTable = "penas", AggregateField = "pena_br" },
-                ["ГасиРезерв"] = new ColumnConfig { PropertyName = "ГасиРезерв", SourceTable = "penas", AggregateField = "pena_rezerv" },
-                #endregion
+
                 #region ---- Отсутствующие (sostav) ----
                 ["ВсегоОтс"] = new ColumnConfig { PropertyName = "ВсегоОтс", SourceTable = "sostav", FilterValues = new List<string> { "Всего_4 Отсутствует" }, AggregateField = "count" },
                 ["Отпуск"] = new ColumnConfig { PropertyName = "Отпуск", SourceTable = "sostav", FilterValues = new List<string> { "Отпуск_4 Отсутствует" }, AggregateField = "count" },
@@ -905,26 +979,44 @@ public class PivotTreeBuilder
                 ["ПрочиеОтс"] = new ColumnConfig { PropertyName = "ПрочиеОтс", SourceTable = "sostav", FilterValues = new List<string> { "Прочее_4 Отсутствует" }, AggregateField = "count" },
                 #endregion
                 #region ---- Пена и порошок (детализированные) топливо ----
-                ["ПенаРасчёт"] = new ColumnConfig { PropertyName = "ПенаРасчёт", SourceTable = "penas", AggregateField = "pena_br" },
-                ["ПенаРезерв"] = new ColumnConfig { PropertyName = "ПенаРезерв", SourceTable = "penas", AggregateField = "pena_rezerv" },
-                ["ПорошокРасчёт"] = new ColumnConfig { PropertyName = "ПорошокРасчёт", SourceTable = "penas", AggregateField = "poroshok_br" },
-                ["ПорошокРезерв"] = new ColumnConfig { PropertyName = "ПорошокРезерв", SourceTable = "penas", AggregateField = "poroshok_rezerv" },
-
-                // ---- Топливо ----
+                ["ПенаРасчёт"] = new ColumnConfig { PropertyName = "ПенаРасчёт", SourceTable = "penas", FilterValues = new List<string> { "Пенообразователь" }, AggregateField = "inwork" },
+                ["ПенаРезерв"] = new ColumnConfig { PropertyName = "ПенаРезерв", SourceTable = "penas", FilterValues = new List<string> { "Пенообразователь" }, AggregateField = "inrezerv" },
+                ["ПорошокРасчёт"] = new ColumnConfig { PropertyName = "ПорошокРасчёт", SourceTable = "penasList", FilterValues = new List<string> { "Пенообразователь" }, AggregateField = "inwork" },
+                ["ПорошокРезерв"] = new ColumnConfig { PropertyName = "ПорошокРезерв", SourceTable = "penasList", FilterValues = new List<string> { "Пенообразователь" }, AggregateField = "inrezerv" },
+                #region ---- ГАСИ (пена/порошок) ----  'ГАСИ_ручной', 'ГАСИ_механизированный'
+                ["ГасиРасчёт"] = new ColumnConfig
+                {
+                    PropertyName = "ГасиРасчёт",
+                    SourceTable = "sredstva",
+                    FilterValues = new List<string> { "ГАСИ_ручной", "ГАСИ_механизированный" },
+                    AggregateField = "br"
+                },
+                ["ГасиРезерв"] = new ColumnConfig
+                {
+                    PropertyName = "ГасиРезерв",
+                    SourceTable = "sredstva",
+                    FilterValues = new List<string> { "ГАСИ_ручной", "ГАСИ_механизированный" },
+                    AggregateField = "rezerv"
+                },
+                #endregion
+                #region ---- Топливо ----
                 ["Дт"] = new ColumnConfig
                 {
                     PropertyName = "Дт",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "ДТ" },
-                    Compute = fields => 0 // заглушка
+                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0) 
+
                 },
                 ["Бензин"] = new ColumnConfig
                 {
                     PropertyName = "Бензин",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "Бензин" },
-                    Compute = fields => 0 // заглушка
+                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0)
+
                 }
+                #endregion
                 #endregion
             };
         }
