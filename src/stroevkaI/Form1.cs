@@ -975,11 +975,12 @@ namespace stroevkaI
             if (PivotRowGrid.CurrentRow != null)
             {
                 selectedItem1 = (PivotRow)PivotRowGrid.CurrentRow.DataBoundItem;
-                if (selectedItem != null)
+                if (selectedItem1 != null)
                 {
-                    if (selectedItem.Isitog == 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
+                    #region По двойному клику на ПСГ - выбрать его вместо ТПСГ
+                    if (selectedItem1.Isitog == 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
                     {
-                        var str = selectedItem.Псг;
+                        var str = selectedItem1.ПСГ;
                         if (cmbPsg.Items.Contains(str))
                             //lastChoose = cmbPsg.Text;
                             //if (str == cmbPsg.Text)
@@ -987,9 +988,10 @@ namespace stroevkaI
                             cmbPsg.Text = str;
                         return;
                     }
+                    #endregion
 
 
-                    using (var editorForm = new EditorsForm(selectedItem))
+                    using (var editorForm = new PivotRowEditor(selectedItem1))
                     {
                         editorForm.ShowDialog();
                     }
