@@ -496,7 +496,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizonId, "FK_contacts_garnizon_id");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_contacts_subdivision_id2");
+                entity.HasIndex(e => e.SubdivisionId, "FK_contacts_subdivision_id3");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -573,10 +573,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasForeignKey(d => d.SubdivisionId)
                     .HasConstraintName("FK_contacts_subdivision_id");
 
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Contacts)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_contacts_subdivision_id2");
+                entity.HasOne(d => d.Subdivision1)
+                    .WithMany(p => p.Contacts)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_contacts_subdivision_id3");
             });
 
             modelBuilder.Entity<FirePsgStat>(entity =>
@@ -999,7 +999,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizionId, "FK_kostyms_garnizion_id");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_kostyms_subdivision_id2");
+                entity.HasIndex(e => e.SubdivisionId, "FK_kostyms_subdivision_id3");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -1052,10 +1052,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasForeignKey(d => d.SubdivisionId)
                     .HasConstraintName("FK_kostyms_subdivision_id");
 
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Kostyms)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_kostyms_subdivision_id2");
+                entity.HasOne(d => d.Subdivision1)
+                    .WithMany(p => p.Kostyms)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_kostyms_subdivision_id3");
             });
 
             modelBuilder.Entity<Pch>(entity =>
@@ -1152,7 +1152,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizonId, "FK_penas_subdivision_id2");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_penas_subdivision_id3");
+                entity.HasIndex(e => e.SubdivisionId, "FK_penas_subdivision_id4");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -1208,10 +1208,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasForeignKey(d => d.SubdivisionId)
                     .HasConstraintName("FK_penas_subdivision_id");
 
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Penas)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_penas_subdivision_id3");
+                entity.HasOne(d => d.Subdivision1)
+                    .WithMany(p => p.Penas)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_penas_subdivision_id4");
             });
 
             modelBuilder.Entity<Personal>(entity =>
@@ -2489,11 +2489,6 @@ namespace StorageI.ModelsStroevkaMySql
                 entity.Property(e => e.УксRezerv)
                     .HasColumnType("int(11)")
                     .HasColumnName("УКС_rezerv");
-
-                entity.HasOne(d => d.ParentNavigation)
-                    .WithMany(p => p.InverseParentNavigation)
-                    .HasForeignKey(d => d.Parent)
-                    .HasConstraintName("FK_psgdata_parent");
             });
 
             modelBuilder.Entity<Psgstat>(entity =>
@@ -2558,10 +2553,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasColumnType("int(11)")
                     .HasColumnName("used");
 
-                //entity.HasOne(d => d.ParentNavigation)
-                //    .WithMany(p => p.InverseParentNavigation)
-                //    .HasForeignKey(d => d.Parent)
-                //    .HasConstraintName("FK_psgstat_parent");
+                entity.HasOne(d => d.ParentNavigation)
+                    .WithMany(p => p.InverseParentNavigation)
+                    .HasForeignKey(d => d.Parent)
+                    .HasConstraintName("FK_psgstat_parent");
             });
 
             modelBuilder.Entity<Sizod>(entity =>
@@ -2570,7 +2565,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizonId, "FK_sizod_garnizon_id");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_sizod_subdivision_id2");
+                entity.HasIndex(e => e.SubdivisionId, "FK_sizod_subdivision_id3");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -2634,10 +2629,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasForeignKey(d => d.SubdivisionId)
                     .HasConstraintName("FK_sizod_subdivision_id");
 
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Sizods)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_sizod_subdivision_id2");
+                entity.HasOne(d => d.Subdivision1)
+                    .WithMany(p => p.Sizods)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_sizod_subdivision_id3");
             });
 
             modelBuilder.Entity<Sostav>(entity =>
@@ -2646,7 +2641,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizoneId, "FK_sostav_garnizone_id");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_sostav_subdivision_id2");
+                entity.HasIndex(e => e.SubdivisionId, "FK_sostav_subdivision_id3");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -2715,10 +2710,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasForeignKey(d => d.SubdivisionId)
                     .HasConstraintName("FK_sostav_subdivision_id");
 
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Sostavs)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_sostav_subdivision_id2");
+                entity.HasOne(d => d.Subdivision1)
+                    .WithMany(p => p.Sostavs)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_sostav_subdivision_id3");
             });
 
             modelBuilder.Entity<Sredstva>(entity =>
@@ -2727,7 +2722,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizonId, "FK_sredstva_garnizon_id2");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_sredstva_subdivision_id2");
+                entity.HasIndex(e => e.SubdivisionId, "FK_sredstva_subdivision_id3");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -2817,10 +2812,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasForeignKey(d => d.SubdivisionId)
                     .HasConstraintName("FK_sredstva_subdivision_id");
 
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Sredstvas)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_sredstva_subdivision_id2");
+                entity.HasOne(d => d.Subdivision1)
+                    .WithMany(p => p.Sredstvas)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_sredstva_subdivision_id3");
             });
 
             modelBuilder.Entity<Titog>(entity =>
@@ -3248,7 +3243,7 @@ namespace StorageI.ModelsStroevkaMySql
 
                 entity.HasIndex(e => e.GarnizonId, "FK_waters_garnizon_id");
 
-                entity.HasIndex(e => e.SubdivisionId, "FK_waters_subdivision_id2");
+                entity.HasIndex(e => e.SubdivisionId, "FK_waters_subdivision_id3");
 
                 entity.Property(e => e.Id)
                     .HasColumnType("int(11)")
@@ -3299,15 +3294,10 @@ namespace StorageI.ModelsStroevkaMySql
                     .HasColumnType("int(11)")
                     .HasColumnName("total");
 
-                //entity.HasOne(d => d.SubdivisionNavigation)
-                //    .WithMany(p => p.Waters)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_waters_subdivision_id");
-
-                //entity.HasOne(d => d.Subdivision1)
-                //    .WithMany(p => p.Waters)
-                //    .HasForeignKey(d => d.SubdivisionId)
-                //    .HasConstraintName("FK_waters_subdivision_id2");
+                entity.HasOne(d => d.SubdivisionNavigation)
+                    .WithMany(p => p.Waters)
+                    .HasForeignKey(d => d.SubdivisionId)
+                    .HasConstraintName("FK_waters_subdivision_id");
             });
 
             OnModelCreatingPartial(modelBuilder);

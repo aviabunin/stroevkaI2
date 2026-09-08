@@ -8,7 +8,6 @@ namespace StorageI.ModelsStroevkaMySql
         public Psgdatum()
         {
             Contacts = new HashSet<Contact>();
-            InverseParentNavigation = new HashSet<Psgdatum>();
             Kostyms = new HashSet<Kostym>();
             Penas = new HashSet<Pena>();
             Personals = new HashSet<Personal>();
@@ -268,9 +267,7 @@ namespace StorageI.ModelsStroevkaMySql
         public int АбгRezerv { get; set; }
         public int АбгRemont { get; set; }
 
-        public virtual Psgdatum? ParentNavigation { get; set; }
         public virtual ICollection<Contact> Contacts { get; set; }
-        public virtual ICollection<Psgdatum> InverseParentNavigation { get; set; }
         public virtual ICollection<Kostym> Kostyms { get; set; }
         public virtual ICollection<Pena> Penas { get; set; }
         public virtual ICollection<Personal> Personals { get; set; }
