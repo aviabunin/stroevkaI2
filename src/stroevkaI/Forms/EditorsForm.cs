@@ -217,18 +217,10 @@ namespace stroevkaI.Forms
 
         private void InitializeSredstvaEditor()
         {
-            if (currentPch != null)
-            {
-                sredstvaEditor = new SredstvaEditor(currentPch);
-            }
-            else if (subdivisionId > 0)
-            {
-                sredstvaEditor = new SredstvaEditor(subdivisionId);
-            }
-            else
-            {
-                sredstvaEditor = new SredstvaEditor();
-            }
+            if (currentPch == null)
+                return;// сделать исключение
+            sredstvaEditor = new SredstvaEditor((int)currentPch.PchId);
+ 
 
             sredstvaEditor.Dock = DockStyle.Fill;
 

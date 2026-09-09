@@ -12,7 +12,7 @@ namespace stroevkaI.Forms
         private int subdivisionId;
         private PivotRow currentRow;
 
-        private SredstvaEditor1 sredstvaEditor;//sredstvaEditor, contactsEditor, personalsEditor,sostavEditor,combinedResourcesEditor,watersEditor,penasEditor,sizodsEditor,kostymsEditor
+        private SredstvaEditor sredstvaEditor;//sredstvaEditor, contactsEditor, personalsEditor,sostavEditor,combinedResourcesEditor,watersEditor,penasEditor,sizodsEditor,kostymsEditor
         private ContactsEditor contactsEditor;
         private PersonalsEditor personalsEditor;
         private SostavEditor sostavEditor;
@@ -147,12 +147,10 @@ namespace stroevkaI.Forms
 
         private void InitializeSredstvaEditor()
         {
-            if (currentRow != null)
-                sredstvaEditor = new SredstvaEditor1(currentRow.PchId);
-            else if (subdivisionId > 0)
-                sredstvaEditor = new SredstvaEditor1(subdivisionId);
-            else
-                sredstvaEditor = new SredstvaEditor1();
+            if (currentRow == null)
+                return;// Сделать исключение
+            sredstvaEditor = new SredstvaEditor(currentRow.PchId);
+
 
             sredstvaEditor.Dock = DockStyle.Fill;
             sredstvaEditor.DataChanged += (s, e) => this.Text = currentRow?.ПЧ + " (изменено)";

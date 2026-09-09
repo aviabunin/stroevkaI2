@@ -35,10 +35,7 @@ namespace stroevkaI.Forms
             CreateContextMenu();
         }
 
-        public SredstvaEditor(FirePsgStat _currentPch) : this()
-        {
-            InitSredstvaEditor(_currentPch);
-        }
+
 
         public SredstvaEditor(int _subdivisionId) : this()
         {
@@ -328,14 +325,16 @@ namespace stroevkaI.Forms
                 .ToList();
         }
 
-        public void InitSredstvaEditor(FirePsgStat _currentPch)
+        public void InitSredstvaEditor(int _pchId)
         {
-            currentPch = _currentPch;
-            if (currentPch != null)
-            {
-                subdivisionId = (int)currentPch.PchId;
-                LoadSredstva();
-            }
+            subdivisionId = _pchId;
+            LoadSredstva();
+            //currentPch = _currentPch;
+            //if (currentPch != null)
+            //{
+            //    subdivisionId = (int)currentPch.PchId;
+            //    LoadSredstva();
+            //}
         }
 
         public void LoadSredstvaById(int _subdivisionId)

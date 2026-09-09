@@ -16,6 +16,12 @@ namespace stroevkaI
     public partial class Form1 : Form
     {
         #region Параметры программы
+
+        public stroevkaContext context = new stroevkaContext();
+        JsonDataService jsonService;// = new JsonDataService(@"\\server\shared\psg_data"); // сетевой путь
+        private DataSyncManager _syncManager;
+        private System.Windows.Forms.Timer _autoSaveTimer;
+
         private static string knownExcelFolder = Directory.GetCurrentDirectory() + @"\отчеты\";
         private string templatePath = knownExcelFolder + @"\шаблоны\";
 
@@ -118,6 +124,9 @@ namespace stroevkaI
         {
             // Принудительно обновляем караул при загрузке
                 UpdateKaraul();
+
+            string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
+            jsonService = new JsonDataService(baseDir); // сетевой путь
             cachedPchList = FireEquipsPivotRepository.getPchList();
             cachedPsgList = FireEquipsPivotRepository.getPsgList();
             statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
@@ -176,6 +185,7 @@ namespace stroevkaI
             if (cmbPsg.SelectedItem == null) return;
 
             rootPsgName = cmbPsg.SelectedItem.ToString();
+           
             rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
 
             // Сохраняем в Settings
@@ -471,20 +481,50 @@ namespace stroevkaI
                 BtnCompare_Click(sender, e);
                 listBoxTools.SelectedIndex = -1;
             }
+            else if (selectedItem == "JSON save")
+                SaveCurrentPchData();
+            else if (selectedItem == "JSON load")
+            {
+                LoadCurrentPchData();
+            }
             else if (selectedItem == "Сравнение всех")
                 compareAllPsg();
             else if (selectedItem == "TreeBuilder") { 
                 BuildTree();
             }
         }
+        private async void SaveCurrentPchData() { 
         
+            var data = CollectCurrentData();
+            _syncManager = new DataSyncManager(context, jsonService, currentPchId);
+            await _syncManager.SaveDataAsync(data);
+            MessageBox.Show("Данные сохранены.");
+        }
+        private async void LoadCurrentPchData()
+        {
+         //   var data = CollectCurrentData();
+         //   await _syncManager.SaveDataAsync(data);
+            MessageBox.Show("Данные сохранены.");
+        }
         //Строим дерево узлов и дерево PivotRows
         private void BuildTree() {
             PivotTreeBuilder b = new PivotTreeBuilder();
             Models.ReportNode  root = b.BuildTree();
             pivotSource  = b.GeneratePivotRows(root);        
         }
+        int currentPchId = 1;
+        private PchData CollectCurrentData()
+        {
+            // Собрать данные из всех редакторов
+            currentPchId = (int)rootPsg.PchId;
 
+            var data = new PchData { PchId = currentPchId };//
+
+            data.SredstvaList = FireEquipsPivotRepository.LoadSredstva(currentPchId);// .GetData();
+            // data.SredstvaList = sredstvaEditor1.GetData();
+            // ... аналогично для других редакторов
+            return data;
+        }
 
         private void BtnCompare_Click(object sender, EventArgs e)
         {
