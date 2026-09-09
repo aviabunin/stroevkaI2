@@ -236,6 +236,56 @@ namespace StorageI.ModelsStroevkaMySql
                 .ThenBy(s => s.Norder)
                 .ToList();
         }
+        public static List<Sredstva> LoadAllSredstva()
+        {
+            context = new stroevkaContext();
+            return context.Sredstvas
+                .OrderBy(s => s.SredstvoVid)
+                .ThenBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Sostav> LoadAllSostav()
+        {
+            context = new stroevkaContext();
+            return context.Sostavs
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Sizod> LoadAllSizods()
+        {
+            context = new stroevkaContext();
+            return context.Sizods
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Pena> LoadAllpenas()
+        {
+            context = new stroevkaContext();
+            return context.Penas
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Contact> LoadAllcontacts()
+        {
+            context = new stroevkaContext();
+            return context.Contacts
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Water> LoadAllWaters()
+        {
+            context = new stroevkaContext();
+            return context.Waters
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Kostym> LoadAllKostyms()
+        {
+            context = new stroevkaContext();
+            return context.Kostyms
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
 
         /// <summary>
         /// Получение ПЧ по ID
@@ -435,8 +485,12 @@ namespace StorageI.ModelsStroevkaMySql
             context = new stroevkaContext();
             return context.FirePsgStats.Where(c => c.Псг.Trim() == psgName).FirstOrDefault();
         }
+        public static PsgTotalRow PsgByName(string psgName)
+        {
+            context = new stroevkaContext();
+            return context.PsgTotalRows.Where(c => c.Name.Trim() == psgName).FirstOrDefault();
+        }
 
- 
         public static int GetPsgIdByName(string psgName)
         {
             context = new stroevkaContext();

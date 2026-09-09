@@ -33,18 +33,6 @@ namespace stroevkaI.Forms
             _sostavRepository = new SostavRepository(_context);
         }
 
-        // Конструктор с FirePsgStat
-        public EditorsForm(FirePsgStat _pch) : this()
-        {
-            currentPch = _pch;
-            if (currentPch != null && currentPch.PchId.HasValue)
-            {
-                subdivisionId = (int)currentPch.PchId.Value;
-            }
-
-            InitializeEditors();
-        }
-
         // Конструктор с subdivisionId
         public EditorsForm(int _subdivisionId) : this()
         {
@@ -75,8 +63,6 @@ namespace stroevkaI.Forms
             InitializeSizodsEditor();
             InitializeKostymsEditor();
             InitializeResourcesTab(); // Новая вкладка со всеми редакторами
-
-
         }
 
         // Новый метод - создаём вкладку с таблицей 2×2

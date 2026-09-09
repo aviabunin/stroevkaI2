@@ -31,6 +31,8 @@ namespace stroevkaI
         private static int lastKaraul = -1;
 
         private FirePsgStat rootPsg = null;
+        private PsgTotalRow rootPsg1 = null;
+
         public string rootPsgName = "";
         private FirePsgStat selectedItem = null;
         private PivotRow selectedItem1 = null;
@@ -101,8 +103,13 @@ namespace stroevkaI
 
             // Загружаем корневой гарнизон
             rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
-
             EquipmentDataGridView.AutoGenerateColumns = false;
+
+            //Загрузка данных - из json 
+            // Пока для районного ПСГ Костомукши - и сравним
+            //LoadDataForPsg(rootPsg); пока перенесём это  в инициализацию редактора
+
+
 
             InitGrid();
       
@@ -185,9 +192,12 @@ namespace stroevkaI
             if (cmbPsg.SelectedItem == null) return;
 
             rootPsgName = cmbPsg.SelectedItem.ToString();
-           
-            rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
 
+            //PsgByName
+
+            rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
+            rootPsg1 = FireEquipsPivotRepository.PsgByName(rootPsgName);
+            
             // Сохраняем в Settings
             Settings.Default.rootGarn = rootPsgName;
             Settings.Default.Save();
@@ -441,7 +451,7 @@ namespace stroevkaI
                     }
 
 
-                    using (var editorForm = new EditorsForm(selectedItem))
+                    using (var editorForm = new EditorsForm((int)selectedItem.PchId))
                     {
                         editorForm.ShowDialog();
                     }
@@ -493,8 +503,9 @@ namespace stroevkaI
                 BuildTree();
             }
         }
-        private async void SaveCurrentPchData() { 
-        
+        private async void SaveCurrentPchData() {
+
+            currentPchId = (int)rootPsg1.PsgId;
             var data = CollectCurrentData();
             _syncManager = new DataSyncManager(context, jsonService, currentPchId);
             await _syncManager.SaveDataAsync(data);
@@ -516,16 +527,29 @@ namespace stroevkaI
         private PchData CollectCurrentData()
         {
             // Собрать данные из всех редакторов
-            currentPchId = (int)rootPsg.PchId;
+            currentPchId = (int)rootPsg1.PsgId;
 
             var data = new PchData { PchId = currentPchId };//
 
-            data.SredstvaList = FireEquipsPivotRepository.LoadSredstva(currentPchId);// .GetData();
-            // data.SredstvaList = sredstvaEditor1.GetData();
-            // ... аналогично для других редакторов
+            if(currentPchId!=11)
+                data.SredstvaList = FireEquipsPivotRepository.LoadSredstva(currentPchId);// .GetData();
+            else { 
+                data.SredstvaList = FireEquipsPivotRepository.LoadAllSredstva();// .GetData();
+                data.SostavList = FireEquipsPivotRepository.LoadAllSostav();// .GetData();
+                data.ContactsList = FireEquipsPivotRepository.LoadAllcontacts();// .GetData();
+                data.WatersList = FireEquipsPivotRepository.LoadAllWaters();// .GetData();
+                data.PenasList = FireEquipsPivotRepository.LoadAllpenas();// .GetData();
+                data.KostymsList = FireEquipsPivotRepository.LoadAllKostyms();// .GetData();
+                data.SizodsList = FireEquipsPivotRepository.LoadAllSizods();// .GetData();
+
+            }
             return data;
         }
-
+        //public List<Contact> ContactsList { get; set; } = new();
+        //public List<Water> WatersList { get; set; } = new();
+        //public List<Pena> PenasList { get; set; } = new();
+        //public List<Sizod> SizodsList { get; set; } = new();
+        //public List<Kostym> KostymsList { get; set; } = new();
         private void BtnCompare_Click(object sender, EventArgs e)
         {
             string rezStr = "";
@@ -1030,8 +1054,9 @@ namespace stroevkaI
                     }
                     #endregion
 
-
-                    using (var editorForm = new PivotRowEditor(selectedItem1))
+                    // Сделаем редактор глобально и сразу создать все редакторы с загрузкой данных
+                    
+                    using (var editorForm = new PivotRowEditor(selectedItem1.PchId))
                     {
                         editorForm.ShowDialog();
                     }

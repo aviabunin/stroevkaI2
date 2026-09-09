@@ -33,13 +33,6 @@ namespace stroevkaI.Forms
             _sostavRepository = new SostavRepository(_context);
         }
 
-        // Конструктор с PivotRow
-        public PivotRowEditor(PivotRow row) : this()
-        {
-            currentRow = row;
-            subdivisionId = currentRow.PchId; // теперь просто int
-            InitializeEditors();
-        }
 
         // Конструктор с subdivisionId (если нужно загрузить PivotRow по id)
         public PivotRowEditor(int subdivisionId) : this()
