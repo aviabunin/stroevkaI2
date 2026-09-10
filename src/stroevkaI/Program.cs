@@ -1,17 +1,28 @@
+using stroevkaI;
+using stroevkaI.Forms;
+using stroevkaI.Services;
+
 namespace stroevkaI
 {
     internal static class Program
     {
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
         [STAThread]
         static void Main()
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-            Application.Run(new Form1());
+            var config = AppConfig.Load();
+
+            switch (config.Mode)
+            {
+                case AppMode.Standalone:
+                    Application.Run(new PivotRowEditor(config.PchId));
+                    break;
+                case AppMode.Garrison:
+                case AppMode.Central:
+                default:
+                    Application.Run(new Form1());
+                    break;
+            }
         }
     }
 }

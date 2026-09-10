@@ -4,372 +4,449 @@ using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
 
-namespace stroevkaI.Services { 
-public class PivotTreeBuilder
+using StorageI.ModelsStroevkaMySql;
+using stroevkaI.Models;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
+
+namespace stroevkaI.Services
 {
-   static  List<PivotRow> allPivotRows;
-        static PchData data;
-
-    Dictionary<int, Psgstat> _psgDict;
-    List<PsgTotalRow> psg_total_rows;
-    ReportNode root = null;
-    static Dictionary<int, List<PivotRow>> psgChildes;
-    public static stroevkaContext _context = new stroevkaContext();
-    public static Dictionary<int, CacheNachkar> nachkarBySubdiv;
-
-
-    string netStatus = "offLine";
-
-    JsonDataService jsonService;// = new JsonDataService(@"\\server\shared\psg_data"); // сетевой путь
-    private DataSyncManager _syncManager;
-
-    public PivotTreeBuilder()
-{
-
-}
-
-  
-    async public Task<PchData>  getPchData() {
-
-        string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
-        jsonService = new JsonDataService(baseDir); // сетевой путь
-        data = new PchData();
-        if (netStatus == "online")
-        {
-
-            // 2. Загружаем сырые данные для листьев (как было)
-            data.PchId = 11;
-            data.SredstvaList = _context.Sredstvas.ToList();
-            data.SostavList = _context.Sostavs.ToList();
-            data.SizodsList = _context.Sizods.ToList();
-            data.PenasList = _context.Penas.ToList();
-            data.KostymsList = _context.Kostyms.ToList();
-            data.WatersList = _context.Waters.ToList();
-            data.ContactsList = _context.Contacts.ToList();
-        }
-        else
-            data = await jsonService.LoadDataAsync(11);
-
-        return data;
-
-    }
-
-
-     async public Task<ReportNode> BuildTree()
+    public class PivotTreeBuilder
     {
-       var allNodes = _context.Psgstats
-            .Where(p => p.Used == 1) 
-            .ToList();
+        // ---------- КЭШ ----------
+        private static readonly ConcurrentDictionary<string, List<PivotRow>> _pivotCache = new();
+        private static readonly ConcurrentDictionary<string, DateTime> _cacheTime = new();
 
-        // Заполняем словарь для быстрого доступа по Id
-        _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
+        // ---------- СОСТОЯНИЕ ----------
+        private Dictionary<int, Psgstat> _psgDict;
+        private ReportNode _root;
+        private readonly stroevkaContext _context;
 
+        public static Dictionary<int, CacheNachkar> nachkarBySubdiv;
+        private readonly AppStatusService _appStatus;
+        private readonly JsonDataService _jsonService;
 
-            data =  await getPchData();
-
-            var sredstvaList = data.SredstvaList;
-            var sostavList = data.SostavList;
-            var sizodList = data.SizodsList;
-            var penasList = data.PenasList;
-            var kostymsList = data.KostymsList;
-            var watersList = data.WatersList;
-            var contactsList = data.ContactsList;
-
-            var psgdataList = _context.Psgdata.ToList();
-            var nachkarsList = _context.CacheNachkars.ToList();
-
-
-
-            // Группируем данные по subdivision_id (Id узла)
-            var sredstvaBySubdiv = sredstvaList
-            .GroupBy(s => s.SubdivisionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-            var psgdataBySubdiv = psgdataList
-            .GroupBy(s => s.Id)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-            var sostavBySubdiv = sostavList
-            .GroupBy(s => s.SubdivisionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-            var sizodsBySubdiv = sizodList
-            .GroupBy(s => s.SubdivisionId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-            var penasBySubdiv = penasList
-                .GroupBy(s => s.SubdivisionId)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            var kostymsBySubdiv = kostymsList
-                .GroupBy(s => s.SubdivisionId)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-             nachkarBySubdiv = nachkarsList
-                .GroupBy(s => s.SubdivisionId)
-                .ToDictionary(g => g.Key, g => g.FirstOrDefault());
-
-            // 3. Строим словарь узлов по Id
-            var nodeDict = new Dictionary<int, ReportNode>();
-        foreach (var psg in allNodes)
+        public PivotTreeBuilder(stroevkaContext context, AppStatusService appStatus, JsonDataService jsonService)
         {
-            var node = new ReportNode
-            {
-                Id = psg.Id,
-                Name = psg.Name, // используем подходящее поле
-                displayName = psg.Displayname, // используем подходящее поле
-                Category = psg.Garntype ?? "",
-                ParentId = psg.Parent ?? 0,
-                Isitog = psg.Isitog ?? 0,
-                Norder = (int)psg.Norder,
-                RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
-            };//расчёт ЛС
+            _context = context;
+            _appStatus = appStatus;
+            _jsonService = jsonService;
+        }
 
-            // Заполняем RawData для листьев (только если это ПЧ, т.е. IsItog == 0)
-            // sredstva
-            if (psg.Isitog == 0 && sredstvaBySubdiv.ContainsKey(psg.Id))
+        // ==========================================================
+        // ЗАГРУЗКА ДАННЫХ ДЛЯ ОДНОГО ПСГ
+        // ==========================================================
+        private async Task<PchData> LoadPchDataAsync(string psgName)
+        {
+            var data = new PchData();
+
+            // Найти psgstat-строку по имени (это может быть районный ПСГ или Территориальный)
+            var psgRow = _context.Psgstats
+                .AsNoTracking()
+                .FirstOrDefault(p => p.Used == 1 && p.Name == psgName);
+
+            if (psgRow == null)
+                return data;
+
+            int psgId = psgRow.Id;
+
+            if (_appStatus.Status.IsDatabaseOnline)
             {
-                var sredstvaForNode = sredstvaBySubdiv[psg.Id];
-                var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();
-                foreach (var s in sredstvaForNode)
-                {
-                    var fields = new Dictionary<string, decimal>
-                    {
-                        ["br"] = s.Br ?? 0,
-                        ["rezerv"] = s.Rezerv ?? 0,
-                        ["remont"] = s.Remont ?? 0,
-                        ["to1"] = (int?)s.Tofirst ?? 0,
-                        ["to2"] = (int?)s.Totow ?? 0
-                    };
-                    sredstvaDict[s.NameSredstvo] = fields;
-                }
-                node.RawData["sredstva"] = sredstvaDict;
+                // ID подразделений этого ПСГ (сам ПСГ + его прямые дети-ПЧ)
+                var subdivIds = await _context.Psgstats
+                    .AsNoTracking()
+                    .Where(p => p.Used == 1 && (p.Id == psgId || p.Parent == psgId))
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                // Параллельная загрузка
+                var sredstvaTask = _context.Sredstvas.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var sostavTask = _context.Sostavs.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var sizodsTask = _context.Sizods.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var penasTask = _context.Penas.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var kostymsTask = _context.Kostyms.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var watersTask = _context.Waters.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var contactsTask = _context.Contacts.AsNoTracking()
+                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .ToListAsync();
+                var nachkarTask = _context.CacheNachkars.AsNoTracking()
+                    .Where(n => subdivIds.Contains(n.SubdivisionId))
+                    .ToListAsync();
+
+                await Task.WhenAll(sredstvaTask, sostavTask, sizodsTask, penasTask,
+                                   kostymsTask, watersTask, contactsTask, nachkarTask);
+
+                data.SredstvaList = await sredstvaTask;
+                data.SostavList = await sostavTask;
+                data.SizodsList = await sizodsTask;
+                data.PenasList = await penasTask;
+                data.KostymsList = await kostymsTask;
+                data.WatersList = await watersTask;
+                data.ContactsList = await contactsTask;
+
+                nachkarBySubdiv = (await nachkarTask)
+                    .GroupBy(n => n.SubdivisionId)
+                    .ToDictionary(g => g.Key, g => g.FirstOrDefault());
+
+                // Обновляем локальный кэш JSON — на случай офлайна
+                data.PchId = psgId;
+                data.LastModified = DateTime.Now;
+                try { await _jsonService.SaveDataAsync(data); } catch { /* не критично */ }
+            }
+            else
+            {
+                // Офлайн — читаем JSON
+                data = await _jsonService.LoadDataAsync(psgId) ?? new PchData { PchId = psgId };
+
+                var nachkarsList = data.ContactsList ?? new List<Contact>();
+                nachkarBySubdiv = new Dictionary<int, CacheNachkar>();
             }
 
-            // sostav
-            if (psg.Isitog == 0 && sostavBySubdiv.ContainsKey(psg.Id))
+            return data;
+        }
+
+        // ==========================================================
+        // ПОСТРОЕНИЕ ДЕРЕВА
+        // ==========================================================
+        public async Task<ReportNode> BuildTreeAsync(string psgName)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // 1. Все узлы (psgstat — маленькая таблица, её грузим целиком, она нужна для GetPsgNameForNode)
+            var allNodes = await _context.Psgstats
+                .AsNoTracking()
+                .Where(p => p.Used == 1)
+                .ToListAsync();
+
+            _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
+
+            // 2. Находим сам ПСГ по имени
+            var psgRow = allNodes.FirstOrDefault(p => p.Name == psgName);
+            if (psgRow == null)
+                return null;
+
+            // 3. Оставляем только ПСГ + его прямых детей + (при желании) вложенные уровни
+            var allowedIds = new HashSet<int> { psgRow.Id };
+
+            // Прямые дети
+            foreach (var c in allNodes.Where(p => p.Parent == psgRow.Id))
+                allowedIds.Add(c.Id);
+
+            // Если у детей есть свои дети (например, "итоги" ПСГ) — добавляем
+            bool added = true;
+            while (added)
             {
+                added = false;
+                foreach (var n in allNodes)
+                {
+                    if (!allowedIds.Contains(n.Id) && n.Parent.HasValue && allowedIds.Contains(n.Parent.Value))
+                    {
+                        allowedIds.Add(n.Id);
+                        added = true;
+                    }
+                }
+            }
+
+            // 4. Отфильтрованный список узлов
+            var nodesForTree = allNodes.Where(n => allowedIds.Contains(n.Id)).ToList();
+
+            // 5. Данные — только по этому ПСГ (уже так и было)
+            var data = await LoadPchDataAsync(psgName);
+
+            // 6. Группировки
+            var sredstvaBySubdiv = (data.SredstvaList ?? new())
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var sostavBySubdiv = (data.SostavList ?? new())
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var sizodsBySubdiv = (data.SizodsList ?? new())
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var penasBySubdiv = (data.PenasList ?? new())
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var kostymsBySubdiv = (data.KostymsList ?? new())
+                .GroupBy(s => s.SubdivisionId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // psgdata (По списку)
+            List<Psgdatum> psgdataList = new();
+            if (_appStatus.Status.IsDatabaseOnline)
+            {
+                var subdivIds = allowedIds.ToList();
+                psgdataList = await _context.Psgdata.AsNoTracking()
+                    .Where(p => subdivIds.Contains(p.Id))
+                    .ToListAsync();
+            }
+            var psgdataBySubdiv = psgdataList
+                .GroupBy(s => s.Id)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // 4. Сборка ReportNode
+            var nodeDict = new Dictionary<int, ReportNode>();
+            foreach (var psg in allNodes)
+            {
+                var node = new ReportNode
+                {
+                    Id = psg.Id,
+                    Name = psg.Name,
+                    displayName = psg.Displayname,
+                    Category = psg.Garntype ?? "",
+                    ParentId = psg.Parent ?? 0,
+                    Isitog = psg.Isitog ?? 0,
+                    Norder = (int)psg.Norder,
+                    RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
+                };
+
+                if (psg.Isitog == 0)
+                {
+                    // sredstva
+                    if (sredstvaBySubdiv.TryGetValue(psg.Id, out var sredstvaForNode))
+                    {
+                        var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();
+                        foreach (var s in sredstvaForNode)
+                        {
+                            sredstvaDict[s.NameSredstvo] = new Dictionary<string, decimal>
+                            {
+                                ["br"] = s.Br ?? 0,
+                                ["rezerv"] = s.Rezerv ?? 0,
+                                ["remont"] = s.Remont ?? 0,
+                                ["to1"] = (int?)s.Tofirst ?? 0,
+                                ["to2"] = (int?)s.Totow ?? 0
+                            };
+                        }
+                        node.RawData["sredstva"] = sredstvaDict;
+                    }
+
+                    // sostav
                     if (sostavBySubdiv.TryGetValue(psg.Id, out var sostavForNode))
-                    { 
+                    {
                         var sostavDict = new Dictionary<string, Dictionary<string, decimal>>();
                         foreach (var s in sostavForNode)
                         {
-                            // Создаём уникальный ключ: "Имя_Вид" или просто "Вид"
-                            string key = $"{s.Name}_{s.SostavVid}"; // или s.SostavVid, если имя не важно
-                            var fields = new Dictionary<string, decimal>
+                            string key = $"{s.Name}_{s.SostavVid}";
+                            sostavDict[key] = new Dictionary<string, decimal>
                             {
-                                ["count"] = s.Count ?? 0,
+                                ["count"] = s.Count ?? 0
                             };
-                            sostavDict[key] = fields;
                         }
                         node.RawData["sostav"] = sostavDict;
                     }
-            }
-            // spsgdata
-            if (psg.Isitog == 0 && psgdataBySubdiv.ContainsKey(psg.Id))
-            {
-                if (psgdataBySubdiv.TryGetValue(psg.Id, out var psgdataForNode))
-                {
-                    var psgdataDict = new Dictionary<string, Dictionary<string, decimal>>();
-                    foreach (var s in psgdataForNode)
-                    {
-                        // TODO - по списку брать из psgstat 
-                        string key = $"{"ПоСписку"}"; //
-                        var fields = new Dictionary<string, decimal>
-                        {
-                            ["count"] = s.ПоСписку ?? 0,
-                        };
-                            psgdataDict[key] = fields;
-                    }
-                    node.RawData["psgdata"] = psgdataDict;
-                }
-            }
 
-            // penas
-            if (psg.Isitog == 0 && penasBySubdiv.ContainsKey(psg.Id))
-            {
-                if (penasBySubdiv.TryGetValue(psg.Id, out var penasForNode))
-                {
-                    var penasDict = new Dictionary<string, Dictionary<string, decimal>>();
-                    foreach (var s in penasForNode)
+                    // psgdata
+                    if (psgdataBySubdiv.TryGetValue(psg.Id, out var psgdataForNode))
                     {
-                        // Создаём уникальный ключ: 
-                        string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
-                        var fields = new Dictionary<string, decimal>
+                        var psgdataDict = new Dictionary<string, Dictionary<string, decimal>>();
+                        foreach (var s in psgdataForNode)
                         {
-                            ["inwork"] = s.Inwork ?? 0,
-                            ["inrezerv"] = s.Inrezerv ?? 0,
-                        };
-                        penasDict[key] = fields;
+                            psgdataDict["ПоСписку"] = new Dictionary<string, decimal>
+                            {
+                                ["count"] = s.ПоСписку ?? 0
+                            };
+                        }
+                        node.RawData["psgdata"] = psgdataDict;
                     }
-                    node.RawData["penas"] = penasDict;
-                }
-            }
-            // sizod
-            if (psg.Isitog == 0 && sizodsBySubdiv.ContainsKey(psg.Id))
-            {
-                if (sizodsBySubdiv.TryGetValue(psg.Id, out var sizodForNode))
-                {
-                    var sizodDict = new Dictionary<string, Dictionary<string, decimal>>();
-                    foreach (var s in sizodForNode)
+
+                    // penas
+                    if (penasBySubdiv.TryGetValue(psg.Id, out var penasForNode))
                     {
-                        // Создаём уникальный ключ: 
-                        string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
-                        var fields = new Dictionary<string, decimal>
+                        var penasDict = new Dictionary<string, Dictionary<string, decimal>>();
+                        foreach (var s in penasForNode)
                         {
-                            ["raschet"] = s.Raschet ?? 0,
-                            ["rezerv"] = s.Rezerv ?? 0,
-                        };
-                            if (s.Raschet + s.Rezerv == 0)
-                                continue;
-                        sizodDict[key] = fields;
+                            penasDict[s.Mname] = new Dictionary<string, decimal>
+                            {
+                                ["inwork"] = s.Inwork ?? 0,
+                                ["inrezerv"] = s.Inrezerv ?? 0
+                            };
+                        }
+                        node.RawData["penas"] = penasDict;
                     }
-                    node.RawData["sizod"] = sizodDict;
-                }
-            }
-                
-            // kostyms
-            if (psg.Isitog == 0 && kostymsBySubdiv.ContainsKey(psg.Id))
-                {
+
+                    // sizod
+                    if (sizodsBySubdiv.TryGetValue(psg.Id, out var sizodForNode))
+                    {
+                        var sizodDict = new Dictionary<string, Dictionary<string, decimal>>();
+                        foreach (var s in sizodForNode)
+                        {
+                            if ((s.Raschet ?? 0) + (s.Rezerv ?? 0) == 0) continue;
+                            sizodDict[s.Mname] = new Dictionary<string, decimal>
+                            {
+                                ["raschet"] = s.Raschet ?? 0,
+                                ["rezerv"] = s.Rezerv ?? 0
+                            };
+                        }
+                        node.RawData["sizod"] = sizodDict;
+                    }
+
+                    // kostyms
                     if (kostymsBySubdiv.TryGetValue(psg.Id, out var kostymsForNode))
                     {
                         var kostymsDict = new Dictionary<string, Dictionary<string, decimal>>();
                         foreach (var s in kostymsForNode)
                         {
-                            // Создаём уникальный ключ: 
-                            string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
-                            var fields = new Dictionary<string, decimal>
+                            kostymsDict[s.Mname] = new Dictionary<string, decimal>
                             {
-                                ["n"] = s.N ?? 0,
+                                ["n"] = s.N ?? 0
                             };
-
-                            kostymsDict[key] = fields;
                         }
                         node.RawData["kostyms"] = kostymsDict;
                     }
                 }
 
-
-
-                //начкар   nachkarBySubdiv
-
                 nodeDict[psg.Id] = node;
-        }
-
-        // 4. Строим дерево, связывая детей с родителями
-        ReportNode root = null;
-        foreach (var node in nodeDict.Values)
-        {
-            if (node.Id == 11) root = node;
-         
-            if (nodeDict.ContainsKey(node.ParentId))
-            {
-                var parent = nodeDict[node.ParentId];
-                parent.Children.Add(node);
             }
+
+            // 5. Связывание
+            ReportNode root = null;
+            foreach (var node in nodeDict.Values)
+            {
+                if (node.Id == psgRow.Id) root = node;
+                if (nodeDict.TryGetValue(node.ParentId, out var parent))
+                    parent.Children.Add(node);
+            }
+            if (root == null)
+                root = nodeDict.Values.FirstOrDefault(n => n.ParentId == 0);
+
+            _root = root;
+
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine($"BuildTreeAsync({psgName}): {sw.ElapsedMilliseconds} ms, nodes={nodeDict.Count}");
+
+            return root;
         }
 
-        // Если корень не найден, возьмём узел с ParentId == 0
-        if (root == null)
-            root = nodeDict.Values.FirstOrDefault(n => n.ParentId == 0);
-
-        return root;
-    }
-
-    // -------------------------------------------
-    // 3.4 ГЕНЕРАЦИЯ СТРОК PivotRow
-    // -------------------------------------------
-    async public Task<List<PivotRow>> GeneratePivotRows(ReportNode rootNode)
-    {
-        #region Инициализация колонок и расчёт строк для листьев (ПЧ)
-        if (rootNode == null)
-            rootNode = await BuildTree();
-
-        InitializeColumnConfigs();
-        var result = new List<PivotRow>();
-
-        // 1. Листья (ПЧ)
-        var leaves = GetAllLeaves(rootNode);
-        foreach (ReportNode leaf in leaves)
-            result.Add(CreateLeafRow(leaf)); // 
-                                                
-            psgChildes = result
-                .GroupBy(c=>c.Parent)
-                .ToDictionary(g => (int)g.Key, g => g.ToList());
-
-            #endregion
-
-        #region 2. Итоговые строки для районных ПСГ
-        var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
-        var allPsgRows = new List<PivotRow>();
-        foreach (var psgNode in psgNodes)
+        // ==========================================================
+        // ГЕНЕРАЦИЯ PivotRow (остаётся почти без изменений, но без
+        // загрузки всех данных — она уже сделана в BuildTreeAsync)
+        // ==========================================================
+        public async Task<List<PivotRow>> GeneratePivotRowsAsync(string psgName, bool forceReload = false)
         {
-            var psgRows = ComputePsgSummaryRows(psgNode);
-            #region Добавляем строки с ПЧ
-                    var psgВсего = psgRows.Where(c => c.Category == "всего").FirstOrDefault();
-                    if (psgВсего != null) {
-                        if (psgChildes.TryGetValue((int)psgВсего.PchId, out var childes))
-                        {
-                            psgВсего.Childes.AddRange(childes);
-                        }
-                    }
-                #endregion
+            if (!forceReload && _pivotCache.TryGetValue(psgName, out var cached))
+                return cached;
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            var rootNode = await BuildTreeAsync(psgName);
+            if (rootNode == null)
+            {
+                var empty = new List<PivotRow>();
+                _pivotCache[psgName] = empty;
+                return empty;
+            }
+
+            InitializeColumnConfigs();
+
+            var result = new List<PivotRow>();
+
+            // 1. Листья
+            var leaves = GetAllLeaves(rootNode);
+            foreach (var leaf in leaves)
+                result.Add(CreateLeafRow(leaf));
+
+            var psgChildes = result
+                .GroupBy(c => c.Parent)
+                .ToDictionary(g => g.Key ?? 0, g => g.ToList());
+
+            // 2. Итоги по районным ПСГ
+            var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
+            var allPsgRows = new List<PivotRow>();
+            foreach (var psgNode in psgNodes)
+            {
+                var psgRows = ComputePsgSummaryRows(psgNode);
+                var psgВсего = psgRows.FirstOrDefault(c => c.Category == "всего");
+                if (psgВсего != null && psgChildes.TryGetValue(psgВсего.PchId, out var childes))
+                    psgВсего.Childes.AddRange(childes);
+
                 result.AddRange(psgRows);
-            allPsgRows.AddRange(psgRows);
+                allPsgRows.AddRange(psgRows);
+            }
+
+            // 3. Территориальные итоги
+            var territorialRows = new List<PivotRow>();
+            foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
+            {
+                var rows = GetPsgRowsByCategory(allPsgRows, cat);
+                var row = CreateTerritorialRow(rootNode, cat, rows);
+                if (row != null) territorialRows.Add(row);
+            }
+
+            var gpsRows = GetPsgRowsByCategory(allPsgRows, "ФПС");
+            gpsRows.AddRange(GetPsgRowsByCategory(allPsgRows, "ППС"));
+            var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
+            if (gpsRow != null) territorialRows.Add(gpsRow);
+
+            var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);
+            if (fpsRow != null) territorialRows.Add(fpsRow);
+
+            var rowsForTotal = territorialRows
+                .Where(r => r.Category == "ГПС" || r.Category == "другие" ||
+                            r.Category == "ЧПО" || r.Category == "ВПО")
+                .ToList();
+            var totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
+            if (totalRow != null)
+            {
+                totalRow.Childes.AddRange(result.Where(c => c.Category == "всего").ToList());
+                totalRow.Childes.AddRange(rowsForTotal);
+                if (fpsRow != null) totalRow.Childes.Add(fpsRow);
+                var asfRow = territorialRows.FirstOrDefault(c => c.Category == "АСФ");
+                if (asfRow != null) totalRow.Childes.Add(asfRow);
+                territorialRows.Add(totalRow);
+            }
+
+            result.AddRange(territorialRows);
+
+            _pivotCache[psgName] = result;
+            _cacheTime[psgName] = DateTime.Now;
+
+            sw.Stop();
+            System.Diagnostics.Debug.WriteLine($"GeneratePivotRowsAsync({psgName}): {sw.ElapsedMilliseconds} ms, rows={result.Count}");
+
+            return result;
         }
-        #endregion
 
-        #region 3. Территориальные итоги  { "ВПО", "ЧПО", "другие", "АСФ" }
-        var territorialRows = new List<PivotRow>();
-
-
-         //  3.1. Обычные категории (ВПО, ЧПО, другие, АСФ) ---
-        foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
+        public static void InvalidateCache(string psgName)
         {
-            var rows = GetPsgRowsByCategory(allPsgRows, cat);
-            var row = CreateTerritorialRow(rootNode, cat, rows);
-            if (row != null)  territorialRows.Add(row);
+            _pivotCache.TryRemove(psgName, out _);
+            _cacheTime.TryRemove(psgName, out _);
         }
 
-        #endregion
+        public static void InvalidateAllCache() => _pivotCache.Clear();
 
-        #region ГПС, ФПС - территориальный
-        // --- 3.2. ГПС ---
-        List<PivotRow> gpsRows = GetPsgRowsByCategory(allPsgRows, "ФПС");
-        var ppsRows = GetPsgRowsByCategory(allPsgRows, "ППС");
-        gpsRows.AddRange(ppsRows);
-        var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
-        if (gpsRow != null) territorialRows.Add(gpsRow);
+        // ==========================================================
+        // Вспомогательные
+        // ==========================================================
+        public static List<PivotRow> GetPsgChildes(string psgName)
+        {
+            if (_pivotCache.TryGetValue(psgName, out var rows))
+            {
+                var psgRow = rows.FirstOrDefault(c => c.ПСГ != null
+                    && c.ПСГ.Contains(psgName)
+                    && c.Category != null
+                    && c.Category.Contains("всего"));
+                if (psgRow == null) return new List<PivotRow>();
 
-
-        // --- 3.3. ФПС (особая логика) ---
-        var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);//,result);
-        if (fpsRow != null) territorialRows.Add(fpsRow);
-        #endregion
-
-        #region 3.4. «всего» (ГПС + другие + ЧПО + ВПО) ---
-        var rowsForTotal = territorialRows
-            .Where(r => r.Category == "ГПС" || r.Category == "другие" || r.Category == "ЧПО" || r.Category == "ВПО")
-            .ToList();
-        PivotRow totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
-        //Итоговые по всем ПСГ -> список дочерних в "Территориальный(всего)"
-        totalRow.Childes.AddRange(result.Where(c => c.Category == "всего").ToList());
-        //добавляем в дочерние - ГПС,другие,ЧПО,ВПО 
-        totalRow.Childes.AddRange(rowsForTotal);
-            //добавляем в дочерние - ФПС,другие,ЧПО,ВПО 
-        totalRow.Childes.Add(fpsRow);
-            var asfRow = territorialRows.Where(c => c.Category == "АСФ").FirstOrDefault();
-        if(asfRow != null)
-            totalRow.Childes.Add(asfRow);
-        if (totalRow != null) territorialRows.Add(totalRow);
-
-        result.AddRange(territorialRows);
-            #endregion
-        allPivotRows = result;
-        return result;
-    }
-    private PivotRow CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow> rowsToSum)
-    {
+                var lst = new List<PivotRow> { psgRow };
+                lst.AddRange(psgRow.Childes);
+                return lst.OrderBy(c => c.Norder).ToList();
+            }
+            return new List<PivotRow>();
+        }
+        private PivotRow CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow> rowsToSum)
+        {
             Dictionary<string, string> displayNames = new Dictionary<string, string>() {
              {"всего","Территориальный" },
              {"другие","    другие категории" },
@@ -395,17 +472,17 @@ public class PivotTreeBuilder
 
             // Если список пуст – возвращаем null (строку не создаём)
             if (rowsToSum == null || !rowsToSum.Any())
-            return null;
+                return null;
 
-        var row = new PivotRow
-        {
-            ПСГ = "Территориальный",
-            Category = categoryName,
-            PchId = rootNode.Id,
-            Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
-            Isitog = 1,
-          
-        };
+            var row = new PivotRow
+            {
+                ПСГ = "Территориальный",
+                Category = categoryName,
+                PchId = rootNode.Id,
+                Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
+                Isitog = 1,
+
+            };
             if (displayNames.ContainsKey(categoryName))
                 row.ПЧ = displayNames[categoryName];
             else
@@ -453,92 +530,93 @@ public class PivotTreeBuilder
                 }
             }
 
-        // Для итоговых строк эти поля пустые
-        row.Начкар = "";
-        row.Datafilled = false;
-        return row;
-    }
-    private List<PivotRow> GetPsgRowsByCategory(List<PivotRow> allPsgRows, string category)
-    {
-        return allPsgRows.Where(r => r.Category == category).ToList();
-    }
-    private PivotRow ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow> allPsgRows)
-    {
-        // 1. Берём все строки ПСГ с категорией "ФПС"
-        var fpsRows = allPsgRows.Where(r => r.Category == "ФПС").ToList();
-
-        // 2. Исключаем строки, принадлежащие Прионежскому ПСГ
-        //    Предположим, что в allPsgRows есть поле ПСГ (имя или Id) – мы можем отфильтровать
-        //    Например, если мы храним имя ПСГ в свойстве ПСГ строки:
-        fpsRows = fpsRows.Where(r => r.ПСГ != "Прионежский").ToList();
-
-        // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
-        //    Находим лист ПЧ-75
-        var pch75Leaf = GetAllLeaves(rootNode).FirstOrDefault(l => l.Name.Contains("ПЧ-75"));
-        if (pch75Leaf != null)
+            // Для итоговых строк эти поля пустые
+            row.Начкар = "";
+            row.Datafilled = false;
+            return row;
+        }
+        private List<PivotRow> GetPsgRowsByCategory(List<PivotRow> allPsgRows, string category)
         {
-            // Создаём строку для листа (как в CreateLeafRow) и добавляем
-            var leafRow = CreateLeafRow(pch75Leaf);
-            // Если такая строка ещё не добавлена (проверяем по Id), добавляем
-            if (!fpsRows.Any(r => r.PchId == leafRow.PchId))
-                fpsRows.Add(leafRow);
+            return allPsgRows.Where(r => r.Category == category).ToList();
+        }
+        private PivotRow ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow> allPsgRows)
+        {
+            // 1. Берём все строки ПСГ с категорией "ФПС"
+            var fpsRows = allPsgRows.Where(r => r.Category == "ФПС").ToList();
+
+            // 2. Исключаем строки, принадлежащие Прионежскому ПСГ
+            //    Предположим, что в allPsgRows есть поле ПСГ (имя или Id) – мы можем отфильтровать
+            //    Например, если мы храним имя ПСГ в свойстве ПСГ строки:
+            fpsRows = fpsRows.Where(r => r.ПСГ != "Прионежский").ToList();
+
+            // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
+            //    Находим лист ПЧ-75
+            var pch75Leaf = GetAllLeaves(rootNode).FirstOrDefault(l => l.Name.Contains("ПЧ-75"));
+            if (pch75Leaf != null)
+            {
+                // Создаём строку для листа (как в CreateLeafRow) и добавляем
+                var leafRow = CreateLeafRow(pch75Leaf);
+                // Если такая строка ещё не добавлена (проверяем по Id), добавляем
+                if (!fpsRows.Any(r => r.PchId == leafRow.PchId))
+                    fpsRows.Add(leafRow);
+            }
+
+            // 4. Создаём территориальную строку для ФПС
+            return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
         }
 
-        // 4. Создаём территориальную строку для ФПС
-        return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
-    }
+        private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
+        {
+            var rows = new List<PivotRow>();  //соберёт 
+            var leaves = GetAllLeaves(psgNode);
+            var leavesByType = leaves
+                .Where(l => !string.IsNullOrEmpty(l.Category))
+                .Where(n => n.Isitog != 1)
+                .GroupBy(l => l.Category)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-    private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
-    {
-        var rows = new List<PivotRow>();  //соберёт 
-        var leaves = GetAllLeaves(psgNode);
-        var leavesByType = leaves
-            .Where(l => !string.IsNullOrEmpty(l.Category))
-            .Where(n => n.Isitog!=1)
-            .GroupBy(l => l.Category)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        // -1.ФПС
-        var fpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС").SelectMany(kv => kv.Value).ToList();
-        rows.Add(CreateCategoryRow(psgNode, "ФПС", fpsLeaves));
-        // 0. ППС
-        var ppsLeaves = leavesByType.Where(kv => kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
-        rows.Add(CreateCategoryRow(psgNode, "ППС", ppsLeaves));
-        // 1. ГПС
-        var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
+            // -1.ФПС
+            var fpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС").SelectMany(kv => kv.Value).ToList();
+            rows.Add(CreateCategoryRow(psgNode, "ФПС", fpsLeaves));
+            // 0. ППС
+            var ppsLeaves = leavesByType.Where(kv => kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
+            rows.Add(CreateCategoryRow(psgNode, "ППС", ppsLeaves));
+            // 1. ГПС
+            var gpsLeaves = leavesByType.Where(kv => kv.Key == "ФПС" || kv.Key == "ППС").SelectMany(kv => kv.Value).ToList();
             var всегоПСГrow = CreateCategoryRow(psgNode, "ГПС", gpsLeaves);
-        rows.Add(всегоПСГrow);
+            rows.Add(всегоПСГrow);
 
             // 2. другие && kv.Key != "ЧПО"   && kv.Key != "ВПО" 
-        var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "ЧПО" && kv.Key != "ВПО" && kv.Key != "АСФ" ).SelectMany(kv => kv.Value).ToList();
-        rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
-        // 2. другие
-        var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
-        var другиеПСГRow = CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves);
-        rows.Add(другиеПСГRow);// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
-        // 3. всего
-        var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList());
+            var otherLeaves = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "ЧПО" && kv.Key != "ВПО" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
+            rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
+            // 2. другие
+            var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
+            var другиеПСГRow = CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves);
+            rows.Add(другиеПСГRow);// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
+                                   // 3. всего
+            var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList());
 
 
             var ВПО_ЧПО_АСФrows = new List<PivotRow>();
-        // 4. ВПО, ЧПО, АСФ
-        foreach (var cat in new[] { "ВПО", "ЧПО", "АСФ" })
-        {
-            if (leavesByType.TryGetValue(cat, out var catLeaves)) {
+            // 4. ВПО, ЧПО, АСФ
+            foreach (var cat in new[] { "ВПО", "ЧПО", "АСФ" })
+            {
+                if (leavesByType.TryGetValue(cat, out var catLeaves))
+                {
                     var r = CreateCategoryRow(psgNode, cat, catLeaves);
                     ВПО_ЧПО_АСФrows.Add(r);
                 }
             }
             rows.AddRange(ВПО_ЧПО_АСФrows);
             //Сформировать строку "всего" для районного ПСГ и занести все предыдущие итоговые в childes
-            всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow,другиеПСГRow });
+            всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow, другиеПСГRow });
             всегоRow.Childes.AddRange(ВПО_ЧПО_АСФrows);
-        
+
             rows.Add(всегоRow);
-        return rows;
-    }
-    private PivotRow CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
-    {
+            return rows;
+        }
+        private PivotRow CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
+        {
             Dictionary<string, string> displayNames = new Dictionary<string, string>() {
              {"всего","" },
              {"другие","    другие категории" },
@@ -580,9 +658,9 @@ public class PivotTreeBuilder
 
             if (displayNames.ContainsKey(categoryName))
                 row.ПЧ = displayNames[categoryName];
-            else if(categoryName == "всего")
-                    row.ПЧ = psgNode.Name;
-                else
+            else if (categoryName == "всего")
+                row.ПЧ = psgNode.Name;
+            else
                 row.ПЧ = "Не определено";
             #endregion
 
@@ -614,37 +692,49 @@ public class PivotTreeBuilder
 
             row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
             return row;
-    }
-    private PivotRow CreateLeafRow(ReportNode leaf)
-    {
-        var row = new PivotRow
-        {
-            ПСГ = GetPsgNameForNode(leaf),
-            ПЧ = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
-            Category = leaf.Category,
-            PchId = leaf.Id,            // Id ПЧ т.к. это лист
-            Parent = leaf.ParentId,     // parentId(psgstat) = parent(psgdata) 
-            Norder = leaf.Norder,
-            Isitog = 0,
-        };
-
-        // Заполняем числовые поля (как было)
-        foreach (var kv in columnConfigs)
-        {
-            var propName = kv.Key;
-            var config = kv.Value;
-            var value = ComputeLeafValue(leaf, config);
-            SetProperty(row, propName, value);
         }
-        row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
-            row.Начкар = nachkarBySubdiv[leaf.Id].Nachkar;
-                //и Datafilled – как было
+        private PivotRow CreateLeafRow(ReportNode leaf)
+        {
+            var row = new PivotRow
+            {
+                ПСГ = GetPsgNameForNode(leaf),
+                ПЧ = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
+                Category = leaf.Category,
+                PchId = leaf.Id,            // Id ПЧ т.к. это лист
+                Parent = leaf.ParentId,     // parentId(psgstat) = parent(psgdata) 
+                Norder = leaf.Norder,
+                Isitog = 0,
+            };
+
+            // Заполняем числовые поля (как было)
+            foreach (var kv in columnConfigs)
+            {
+                var propName = kv.Key;
+                var config = kv.Value;
+                var value = ComputeLeafValue(leaf, config);
+                SetProperty(row, propName, value);
+            }
+            row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
+            //row.Начкар = nachkarBySubdiv[leaf.Id].Nachkar;
+
+            if (nachkarBySubdiv != null &&
+    nachkarBySubdiv.TryGetValue(leaf.Id, out var nachkar) &&
+    nachkar != null)
+            {
+                row.Начкар = nachkar.Nachkar ?? "";
+            }
+            else
+            {
+                row.Начкар = "";
+            }
+
+            //и Datafilled – как было
             // ...
 
             return row;
-    }
-    private PivotRow CreateTotalRow(ReportNode psgNode, List<PivotRow> rowsToSum)
-    {
+        }
+        private PivotRow CreateTotalRow(ReportNode psgNode, List<PivotRow> rowsToSum)
+        {
             var row = new PivotRow
             {
                 ПСГ = psgNode.Name,
@@ -653,8 +743,8 @@ public class PivotTreeBuilder
                 PchId = psgNode.Id,
                 Parent = psgNode.ParentId,
                 Norder = psgNode.Norder,
-            Isitog = 1,
-        };
+                Isitog = 1,
+            };
 
             // Суммируем все числовые свойства из переданных строк
             foreach (var prop in typeof(PivotRow).GetProperties())
@@ -691,71 +781,71 @@ public class PivotTreeBuilder
             // Например, Nachkar, Datafilled – для итогов обычно пустые
             row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
             return row;
-    }
-    // Создание итоговых строк для узла (ПСГ или территориальный)
-
-    private decimal ComputeNodeValue(ReportNode node, ColumnConfig config, LevelConfig levelConfig, string categoryId)
-    {
-        var rule = levelConfig.Categories.FirstOrDefault(r => r.CategoryId == categoryId);
-        if (rule == null) return 0;
-
-        decimal total = 0;
-        // Если узел лист – проверяем условие
-        if (node.Children.Count == 0)
-        {
-            if (rule.Condition(node))
-                return ComputeLeafValue(node, config);
-            return 0;
         }
+        // Создание итоговых строк для узла (ПСГ или территориальный)
 
-        // Иначе суммируем детей   ВОЗМОЖНО ЛЕГЧЕ НЕ РАСКРУЧИВАТЬ ДЕРЕВО, А СДЕЛАТЬ 3 ПРОЦЕДУРЫ - ДЛЯ ЛИСТА, ПСГ , ТЕРРИТОРИАЛЬНОГО
-        // Для категорий ВСЕГО или ГПС - везде одинаково - проще
-        // Для остальных посмотреть
-
-        foreach (var child in node.Children)
+        private decimal ComputeNodeValue(ReportNode node, ColumnConfig config, LevelConfig levelConfig, string categoryId)
         {
-            // Для территориального уровня исключаем некоторые узлы (флаг IncludeInTerritorial) - ИЛИКАК ТО ЕЩЁ ВРОДЕ ВИДЕЛ - В ВИДЕ УСЛОВИЯ
-            if (levelConfig.LevelId == "territorial" && !child.IncludeInTerritorial)
-                continue;
+            var rule = levelConfig.Categories.FirstOrDefault(r => r.CategoryId == categoryId);
+            if (rule == null) return 0;
 
-            if (rule.Condition(child))
-                total += ComputeNodeValue(child, config, levelConfig, categoryId);
-        }
-        return total;
-    }
+            decimal total = 0;
+            // Если узел лист – проверяем условие
+            if (node.Children.Count == 0)
+            {
+                if (rule.Condition(node))
+                    return ComputeLeafValue(node, config);
+                return 0;
+            }
 
-    // Получить все листья дерева
-    List<ReportNode> GetAllLeaves(ReportNode node)
-    {
-        var leaves = new List<ReportNode>();
-        if ((node.Children.Count == 0) && (node.Isitog==0))
-            leaves.Add(node);
-        else
+            // Иначе суммируем детей   ВОЗМОЖНО ЛЕГЧЕ НЕ РАСКРУЧИВАТЬ ДЕРЕВО, А СДЕЛАТЬ 3 ПРОЦЕДУРЫ - ДЛЯ ЛИСТА, ПСГ , ТЕРРИТОРИАЛЬНОГО
+            // Для категорий ВСЕГО или ГПС - везде одинаково - проще
+            // Для остальных посмотреть
+
             foreach (var child in node.Children)
-                leaves.AddRange(GetAllLeaves(child));
-        return leaves;
-    }
-    // Функция вычисления значения для листа по колонке
-    private decimal ComputeLeafValue(ReportNode node, ColumnConfig config)
-    {
-        if (!node.RawData.TryGetValue(config.SourceTable, out var sourceDict))
-            return 0;
+            {
+                // Для территориального уровня исключаем некоторые узлы (флаг IncludeInTerritorial) - ИЛИКАК ТО ЕЩЁ ВРОДЕ ВИДЕЛ - В ВИДЕ УСЛОВИЯ
+                if (levelConfig.LevelId == "territorial" && !child.IncludeInTerritorial)
+                    continue;
 
-        decimal total = 0;
-        foreach (var kv in sourceDict)
-        {
-            var key = kv.Key;
-            var fields = kv.Value;
-
-            // Фильтр по списку имён (если задан)
-            if (config.FilterValues.Count > 0 && !config.FilterValues.Contains(key))
-                continue;
-
-            // Используем делегат вычисления
-            total += config.GetValue(fields);
+                if (rule.Condition(child))
+                    total += ComputeNodeValue(child, config, levelConfig, categoryId);
+            }
+            return total;
         }
-        return total;
-    }
+
+        // Получить все листья дерева
+        List<ReportNode> GetAllLeaves(ReportNode node)
+        {
+            var leaves = new List<ReportNode>();
+            if ((node.Children.Count == 0) && (node.Isitog == 0))
+                leaves.Add(node);
+            else
+                foreach (var child in node.Children)
+                    leaves.AddRange(GetAllLeaves(child));
+            return leaves;
+        }
+        // Функция вычисления значения для листа по колонке
+        private decimal ComputeLeafValue(ReportNode node, ColumnConfig config)
+        {
+            if (!node.RawData.TryGetValue(config.SourceTable, out var sourceDict))
+                return 0;
+
+            decimal total = 0;
+            foreach (var kv in sourceDict)
+            {
+                var key = kv.Key;
+                var fields = kv.Value;
+
+                // Фильтр по списку имён (если задан)
+                if (config.FilterValues.Count > 0 && !config.FilterValues.Contains(key))
+                    continue;
+
+                // Используем делегат вычисления
+                total += config.GetValue(fields);
+            }
+            return total;
+        }
 
         // -------------------------------------------
         // 3.6 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
@@ -771,26 +861,26 @@ public class PivotTreeBuilder
         }
 
         private string GetPsgNameForNode(ReportNode node)
-    {
-        int? currentId = node.ParentId;
-        while (currentId.HasValue && currentId != 0) // никогда не равен 0, но оставляем- не хуже
         {
-            if (_psgDict.TryGetValue(currentId.Value, out var psg))
+            int? currentId = node.ParentId;
+            while (currentId.HasValue && currentId != 0) // никогда не равен 0, но оставляем- не хуже
             {
-                if (psg.Isitog == 1)
-                    return psg.Displayname;// имена итоговых держим в psgstat
-                currentId = psg.Parent;// иначе - просто имя psg
+                if (_psgDict.TryGetValue(currentId.Value, out var psg))
+                {
+                    if (psg.Isitog == 1)
+                        return psg.Displayname;// имена итоговых держим в psgstat
+                    currentId = psg.Parent;// иначе - просто имя psg
+                }
+                else break;
             }
-            else break;
+            return "Без ПСГ";
         }
-        return "Без ПСГ";
-    }
 
-    Dictionary<string, ColumnConfig> columnConfigs;
+        Dictionary<string, ColumnConfig> columnConfigs;
 
 
 
-    private void InitializeColumnConfigs()
+        private void InitializeColumnConfigs()
         {
             List<string> lstВсего = new List<string>() { "ПНК_2 Боевой расчет", "КО_2 Боевой расчет", "Водители_2 Боевой расчет", "Пожарные_2 Боевой расчет" };
             List<string> lstГДЗС = new List<string>() { "НК_3 ГДЗС", "ПНК_3 ГДЗС", "КО_3 ГДЗС", "Водители_3 ГДЗС", "Пожарные_3 ГДЗС" };
@@ -801,10 +891,12 @@ public class PivotTreeBuilder
                 #region ---- Боевой расчёт (br), резерв (rezerv), ремонт (remont) для каждого типа техники ----
                 // АЦ
                 ["AcBr"] = new ColumnConfig
-                { PropertyName = "AcBr",
+                {
+                    PropertyName = "AcBr",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "АЦ" },
-                    AggregateField = "br" },
+                    AggregateField = "br"
+                },
                 ["AcRezerv"] = new ColumnConfig { PropertyName = "AcRezerv", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "rezerv" },
                 ["AcRemont"] = new ColumnConfig { PropertyName = "AcRemont", SourceTable = "sredstva", FilterValues = new List<string> { "АЦ" }, AggregateField = "remont" },
 
@@ -969,23 +1061,23 @@ public class PivotTreeBuilder
                 #endregion
                 #region ---- СИЗОД ----
                 //["ПенаРасчёт"] = new ColumnConfig { PropertyName = "ПенаРасчёт", SourceTable = "penas", FilterValues = new List<string> { "Пенообразователь" }, AggregateField = "inwork" },
-                ["SizodBr"] = new ColumnConfig{PropertyName = "SizodBr",SourceTable = "sizod", Compute = fields => fields.GetValueOrDefault("raschet", 0)},
-                ["SizodRezerv"] = new ColumnConfig { PropertyName = "SizodRezerv", SourceTable = "sizod", Compute = fields => fields.GetValueOrDefault("rezerv", 0)},
- 
+                ["SizodBr"] = new ColumnConfig { PropertyName = "SizodBr", SourceTable = "sizod", Compute = fields => fields.GetValueOrDefault("raschet", 0) },
+                ["SizodRezerv"] = new ColumnConfig { PropertyName = "SizodRezerv", SourceTable = "sizod", Compute = fields => fields.GetValueOrDefault("rezerv", 0) },
+
                 #endregion
                 #region ---- Костюмы ----
                 ["КостюмыЛ1Таск"] = new ColumnConfig
                 {
                     PropertyName = "КостюмыЛ1Таск",
-                    SourceTable = "kostyms",                    
-                    FilterValues = new List<string> { "Л-1","ТАСК", "ОЗК" },
-                    AggregateField = "n" 
+                    SourceTable = "kostyms",
+                    FilterValues = new List<string> { "Л-1", "ТАСК", "ОЗК" },
+                    AggregateField = "n"
                 },
                 ["КостюмыТок"] = new ColumnConfig
                 {
                     PropertyName = "КостюмыТок",
                     SourceTable = "kostyms",
-                    FilterValues = new List<string> { "ТОК"},
+                    FilterValues = new List<string> { "ТОК" },
                     AggregateField = "n"
                 },
                 ["КостюмыДругие"] = new ColumnConfig
@@ -997,17 +1089,17 @@ public class PivotTreeBuilder
                 },
                 #endregion
                 #region ---- Личный состав (sostav) ----
-                
+
                 ["Нк"] = new ColumnConfig { PropertyName = "Нк", SourceTable = "sostav", FilterValues = new List<string> { "НК_2 Боевой расчет" }, AggregateField = "count" },
                 ["Диспетчер"] = new ColumnConfig { PropertyName = "Диспетчер", SourceTable = "sostav", FilterValues = new List<string> { "Диспетчер_2 Боевой расчет" }, AggregateField = "count" },
                 ["Пнк"] = new ColumnConfig { PropertyName = "Пнк", SourceTable = "sostav", FilterValues = new List<string> { "ПНК_2 Боевой расчет" }, AggregateField = "count" },
                 ["Ко"] = new ColumnConfig { PropertyName = "Ко", SourceTable = "sostav", FilterValues = new List<string> { "КО_2 Боевой расчет" }, AggregateField = "count" },
                 ["Водитель"] = new ColumnConfig { PropertyName = "Водитель", SourceTable = "sostav", FilterValues = new List<string> { "Водители_2 Боевой расчет" }, AggregateField = "count" },
                 ["Пожарный"] = new ColumnConfig { PropertyName = "Пожарный", SourceTable = "sostav", FilterValues = new List<string> { "Пожарные_2 Боевой расчет" }, AggregateField = "count" },
-                ["Гдзс"] = new ColumnConfig { PropertyName = "Гдзс", SourceTable = "sostav", FilterValues = lstГДЗС, AggregateField = "count" }, 
+                ["Гдзс"] = new ColumnConfig { PropertyName = "Гдзс", SourceTable = "sostav", FilterValues = lstГДЗС, AggregateField = "count" },
                 ["ПоСписку"] = new ColumnConfig { PropertyName = "ПоСписку", SourceTable = "psgdata", FilterValues = new List<string> { "ПоСписку" }, AggregateField = "count" },
                 ["Налицо"] = new ColumnConfig { PropertyName = "Налицо", SourceTable = "sostav", FilterValues = lstНалицо, AggregateField = "count" },
-                ["Всего"] = new ColumnConfig { PropertyName = "Всего", SourceTable = "sostav", FilterValues =lstВсего, AggregateField = "count" },
+                ["Всего"] = new ColumnConfig { PropertyName = "Всего", SourceTable = "sostav", FilterValues = lstВсего, AggregateField = "count" },
                 ["Резерв"] = new ColumnConfig { PropertyName = "Резерв", SourceTable = "sostav", FilterValues = new List<string> { "резерв" }, AggregateField = "count" },//TODO только отсутствующие 
                 #endregion
 
@@ -1046,7 +1138,7 @@ public class PivotTreeBuilder
                     PropertyName = "Дт",
                     SourceTable = "sredstva",
                     FilterValues = new List<string> { "ДТ" },
-                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0) 
+                    Compute = fields => fields.GetValueOrDefault("br", 0) + fields.GetValueOrDefault("rezerv", 0)
 
                 },
                 ["Бензин"] = new ColumnConfig
@@ -1062,19 +1154,9 @@ public class PivotTreeBuilder
             };
         }
 
-//        В CreateCategoryRow
-//В CreateTerritorialRow
-    public static List<PivotRow> GetPsgChildes(string _psgname)
-    {
-        List<PivotRow> lst = new List<PivotRow>();
-            if (allPivotRows == null)
-                return lst;
-        PivotRow psgRow = allPivotRows.Where(c => ((c.ПСГ.Contains(_psgname)) && (c.Category.Contains("всего")))).FirstOrDefault();//Лучше по Id ПЧ или гарнизона
-        if (psgRow == null) return lst;
-        lst.Add(psgRow);
-        lst.AddRange(psgRow.Childes);
-        return lst.OrderBy(c => c.Norder).ToList();
-     }
+        //        В CreateCategoryRow
+        //В CreateTerritorialRow
+
         private static bool IsDecimalProperty(PropertyInfo prop)
         {
             if (!prop.CanWrite) return false;
@@ -1083,6 +1165,12 @@ public class PivotTreeBuilder
         }
 
     }
+    // ... остальные методы (
+    //     ComputePsgSummaryRows, ComputeTerritorialFpsRow, GetAllLeaves,
+    //     ComputeLeafValue, SetProperty, GetPsgNameForNode, InitializeColumnConfigs,
+    //     IsDecimalProperty) — БЕЗ ИЗМЕНЕНИЙ.
+    // Скопируйте их из текущего PivotTreeBuilder без правок.
+
     public class PivotRow
     {
         // === Иерархия (скопировано из FirePsgStat) ===
@@ -1206,3 +1294,372 @@ public class PivotTreeBuilder
         public string Category { get; set; } // опционально, для группировки
     }
 }
+
+
+//namespace stroevkaI.Services { 
+//public class PivotTreeBuilder
+//{
+//   static  List<PivotRow> allPivotRows;
+//        static PchData data;
+
+//    Dictionary<int, Psgstat> _psgDict;
+//    List<PsgTotalRow> psg_total_rows;
+//    ReportNode root = null;
+//    static Dictionary<int, List<PivotRow>> psgChildes;
+//    public static stroevkaContext _context = new stroevkaContext();
+//    public static Dictionary<int, CacheNachkar> nachkarBySubdiv;
+
+
+//    string netStatus = "offLine";
+
+//    JsonDataService jsonService;// = new JsonDataService(@"\\server\shared\psg_data"); // сетевой путь
+//    private DataSyncManager _syncManager;
+
+//    public PivotTreeBuilder()
+//{
+
+//}
+
+
+//    async public Task<PchData>  getPchData() {
+
+//        string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
+//        jsonService = new JsonDataService(baseDir); // сетевой путь
+//        data = new PchData();
+//        if (netStatus == "online")
+//        {
+
+//            // 2. Загружаем сырые данные для листьев (как было)
+//            data.PchId = 11;
+//            data.SredstvaList = _context.Sredstvas.ToList();
+//            data.SostavList = _context.Sostavs.ToList();
+//            data.SizodsList = _context.Sizods.ToList();
+//            data.PenasList = _context.Penas.ToList();
+//            data.KostymsList = _context.Kostyms.ToList();
+//            data.WatersList = _context.Waters.ToList();
+//            data.ContactsList = _context.Contacts.ToList();
+//        }
+//        else
+//            data = await jsonService.LoadDataAsync(11);
+
+//        return data;
+
+//    }
+
+
+//     async public Task<ReportNode> BuildTree()
+//    {
+//       var allNodes = _context.Psgstats
+//            .Where(p => p.Used == 1) 
+//            .ToList();
+
+//        // Заполняем словарь для быстрого доступа по Id
+//        _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
+
+
+//            data =  await getPchData();
+
+//            var sredstvaList = data.SredstvaList;
+//            var sostavList = data.SostavList;
+//            var sizodList = data.SizodsList;
+//            var penasList = data.PenasList;
+//            var kostymsList = data.KostymsList;
+//            var watersList = data.WatersList;
+//            var contactsList = data.ContactsList;
+
+//            var psgdataList = _context.Psgdata.ToList();
+//            var nachkarsList = _context.CacheNachkars.ToList();
+
+
+
+//            // Группируем данные по subdivision_id (Id узла)
+//            var sredstvaBySubdiv = sredstvaList
+//            .GroupBy(s => s.SubdivisionId)
+//            .ToDictionary(g => g.Key, g => g.ToList());
+
+//            var psgdataBySubdiv = psgdataList
+//            .GroupBy(s => s.Id)
+//            .ToDictionary(g => g.Key, g => g.ToList());
+
+//            var sostavBySubdiv = sostavList
+//            .GroupBy(s => s.SubdivisionId)
+//            .ToDictionary(g => g.Key, g => g.ToList());
+
+//            var sizodsBySubdiv = sizodList
+//            .GroupBy(s => s.SubdivisionId)
+//            .ToDictionary(g => g.Key, g => g.ToList());
+
+//            var penasBySubdiv = penasList
+//                .GroupBy(s => s.SubdivisionId)
+//                .ToDictionary(g => g.Key, g => g.ToList());
+
+//            var kostymsBySubdiv = kostymsList
+//                .GroupBy(s => s.SubdivisionId)
+//                .ToDictionary(g => g.Key, g => g.ToList());
+
+//             nachkarBySubdiv = nachkarsList
+//                .GroupBy(s => s.SubdivisionId)
+//                .ToDictionary(g => g.Key, g => g.FirstOrDefault());
+
+//            // 3. Строим словарь узлов по Id
+//            var nodeDict = new Dictionary<int, ReportNode>();
+//        foreach (var psg in allNodes)
+//        {
+//            var node = new ReportNode
+//            {
+//                Id = psg.Id,
+//                Name = psg.Name, // используем подходящее поле
+//                displayName = psg.Displayname, // используем подходящее поле
+//                Category = psg.Garntype ?? "",
+//                ParentId = psg.Parent ?? 0,
+//                Isitog = psg.Isitog ?? 0,
+//                Norder = (int)psg.Norder,
+//                RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
+//            };//расчёт ЛС
+
+//            // Заполняем RawData для листьев (только если это ПЧ, т.е. IsItog == 0)
+//            // sredstva
+//            if (psg.Isitog == 0 && sredstvaBySubdiv.ContainsKey(psg.Id))
+//            {
+//                var sredstvaForNode = sredstvaBySubdiv[psg.Id];
+//                var sredstvaDict = new Dictionary<string, Dictionary<string, decimal>>();
+//                foreach (var s in sredstvaForNode)
+//                {
+//                    var fields = new Dictionary<string, decimal>
+//                    {
+//                        ["br"] = s.Br ?? 0,
+//                        ["rezerv"] = s.Rezerv ?? 0,
+//                        ["remont"] = s.Remont ?? 0,
+//                        ["to1"] = (int?)s.Tofirst ?? 0,
+//                        ["to2"] = (int?)s.Totow ?? 0
+//                    };
+//                    sredstvaDict[s.NameSredstvo] = fields;
+//                }
+//                node.RawData["sredstva"] = sredstvaDict;
+//            }
+
+//            // sostav
+//            if (psg.Isitog == 0 && sostavBySubdiv.ContainsKey(psg.Id))
+//            {
+//                    if (sostavBySubdiv.TryGetValue(psg.Id, out var sostavForNode))
+//                    { 
+//                        var sostavDict = new Dictionary<string, Dictionary<string, decimal>>();
+//                        foreach (var s in sostavForNode)
+//                        {
+//                            // Создаём уникальный ключ: "Имя_Вид" или просто "Вид"
+//                            string key = $"{s.Name}_{s.SostavVid}"; // или s.SostavVid, если имя не важно
+//                            var fields = new Dictionary<string, decimal>
+//                            {
+//                                ["count"] = s.Count ?? 0,
+//                            };
+//                            sostavDict[key] = fields;
+//                        }
+//                        node.RawData["sostav"] = sostavDict;
+//                    }
+//            }
+//            // spsgdata
+//            if (psg.Isitog == 0 && psgdataBySubdiv.ContainsKey(psg.Id))
+//            {
+//                if (psgdataBySubdiv.TryGetValue(psg.Id, out var psgdataForNode))
+//                {
+//                    var psgdataDict = new Dictionary<string, Dictionary<string, decimal>>();
+//                    foreach (var s in psgdataForNode)
+//                    {
+//                        // TODO - по списку брать из psgstat 
+//                        string key = $"{"ПоСписку"}"; //
+//                        var fields = new Dictionary<string, decimal>
+//                        {
+//                            ["count"] = s.ПоСписку ?? 0,
+//                        };
+//                            psgdataDict[key] = fields;
+//                    }
+//                    node.RawData["psgdata"] = psgdataDict;
+//                }
+//            }
+
+//            // penas
+//            if (psg.Isitog == 0 && penasBySubdiv.ContainsKey(psg.Id))
+//            {
+//                if (penasBySubdiv.TryGetValue(psg.Id, out var penasForNode))
+//                {
+//                    var penasDict = new Dictionary<string, Dictionary<string, decimal>>();
+//                    foreach (var s in penasForNode)
+//                    {
+//                        // Создаём уникальный ключ: 
+//                        string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
+//                        var fields = new Dictionary<string, decimal>
+//                        {
+//                            ["inwork"] = s.Inwork ?? 0,
+//                            ["inrezerv"] = s.Inrezerv ?? 0,
+//                        };
+//                        penasDict[key] = fields;
+//                    }
+//                    node.RawData["penas"] = penasDict;
+//                }
+//            }
+//            // sizod
+//            if (psg.Isitog == 0 && sizodsBySubdiv.ContainsKey(psg.Id))
+//            {
+//                if (sizodsBySubdiv.TryGetValue(psg.Id, out var sizodForNode))
+//                {
+//                    var sizodDict = new Dictionary<string, Dictionary<string, decimal>>();
+//                    foreach (var s in sizodForNode)
+//                    {
+//                        // Создаём уникальный ключ: 
+//                        string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
+//                        var fields = new Dictionary<string, decimal>
+//                        {
+//                            ["raschet"] = s.Raschet ?? 0,
+//                            ["rezerv"] = s.Rezerv ?? 0,
+//                        };
+//                            if (s.Raschet + s.Rezerv == 0)
+//                                continue;
+//                        sizodDict[key] = fields;
+//                    }
+//                    node.RawData["sizod"] = sizodDict;
+//                }
+//            }
+
+//            // kostyms
+//            if (psg.Isitog == 0 && kostymsBySubdiv.ContainsKey(psg.Id))
+//                {
+//                    if (kostymsBySubdiv.TryGetValue(psg.Id, out var kostymsForNode))
+//                    {
+//                        var kostymsDict = new Dictionary<string, Dictionary<string, decimal>>();
+//                        foreach (var s in kostymsForNode)
+//                        {
+//                            // Создаём уникальный ключ: 
+//                            string key = $"{s.Mname}"; // или s.SostavVid, если имя не важно
+//                            var fields = new Dictionary<string, decimal>
+//                            {
+//                                ["n"] = s.N ?? 0,
+//                            };
+
+//                            kostymsDict[key] = fields;
+//                        }
+//                        node.RawData["kostyms"] = kostymsDict;
+//                    }
+//                }
+
+
+
+//                //начкар   nachkarBySubdiv
+
+//                nodeDict[psg.Id] = node;
+//        }
+
+//        // 4. Строим дерево, связывая детей с родителями
+//        ReportNode root = null;
+//        foreach (var node in nodeDict.Values)
+//        {
+//            if (node.Id == 11) root = node;
+
+//            if (nodeDict.ContainsKey(node.ParentId))
+//            {
+//                var parent = nodeDict[node.ParentId];
+//                parent.Children.Add(node);
+//            }
+//        }
+
+//        // Если корень не найден, возьмём узел с ParentId == 0
+//        if (root == null)
+//            root = nodeDict.Values.FirstOrDefault(n => n.ParentId == 0);
+
+//        return root;
+//    }
+
+//    // -------------------------------------------
+//    // 3.4 ГЕНЕРАЦИЯ СТРОК PivotRow
+//    // -------------------------------------------
+//    async public Task<List<PivotRow>> GeneratePivotRows(ReportNode rootNode)
+//    {
+//        #region Инициализация колонок и расчёт строк для листьев (ПЧ)
+//        if (rootNode == null)
+//            rootNode = await BuildTree();
+
+//        InitializeColumnConfigs();
+//        var result = new List<PivotRow>();
+
+//        // 1. Листья (ПЧ)
+//        var leaves = GetAllLeaves(rootNode);
+//        foreach (ReportNode leaf in leaves)
+//            result.Add(CreateLeafRow(leaf)); // 
+
+//            psgChildes = result
+//                .GroupBy(c=>c.Parent)
+//                .ToDictionary(g => (int)g.Key, g => g.ToList());
+
+//            #endregion
+
+//        #region 2. Итоговые строки для районных ПСГ
+//        var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
+//        var allPsgRows = new List<PivotRow>();
+//        foreach (var psgNode in psgNodes)
+//        {
+//            var psgRows = ComputePsgSummaryRows(psgNode);
+//            #region Добавляем строки с ПЧ
+//                    var psgВсего = psgRows.Where(c => c.Category == "всего").FirstOrDefault();
+//                    if (psgВсего != null) {
+//                        if (psgChildes.TryGetValue((int)psgВсего.PchId, out var childes))
+//                        {
+//                            psgВсего.Childes.AddRange(childes);
+//                        }
+//                    }
+//                #endregion
+//                result.AddRange(psgRows);
+//            allPsgRows.AddRange(psgRows);
+//        }
+//        #endregion
+
+//        #region 3. Территориальные итоги  { "ВПО", "ЧПО", "другие", "АСФ" }
+//        var territorialRows = new List<PivotRow>();
+
+
+//         //  3.1. Обычные категории (ВПО, ЧПО, другие, АСФ) ---
+//        foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
+//        {
+//            var rows = GetPsgRowsByCategory(allPsgRows, cat);
+//            var row = CreateTerritorialRow(rootNode, cat, rows);
+//            if (row != null)  territorialRows.Add(row);
+//        }
+
+//        #endregion
+
+//        #region ГПС, ФПС - территориальный
+//        // --- 3.2. ГПС ---
+//        List<PivotRow> gpsRows = GetPsgRowsByCategory(allPsgRows, "ФПС");
+//        var ppsRows = GetPsgRowsByCategory(allPsgRows, "ППС");
+//        gpsRows.AddRange(ppsRows);
+//        var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
+//        if (gpsRow != null) territorialRows.Add(gpsRow);
+
+
+//        // --- 3.3. ФПС (особая логика) ---
+//        var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);//,result);
+//        if (fpsRow != null) territorialRows.Add(fpsRow);
+//        #endregion
+
+//        #region 3.4. «всего» (ГПС + другие + ЧПО + ВПО) ---
+//        var rowsForTotal = territorialRows
+//            .Where(r => r.Category == "ГПС" || r.Category == "другие" || r.Category == "ЧПО" || r.Category == "ВПО")
+//            .ToList();
+//        PivotRow totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
+//        //Итоговые по всем ПСГ -> список дочерних в "Территориальный(всего)"
+//        totalRow.Childes.AddRange(result.Where(c => c.Category == "всего").ToList());
+//        //добавляем в дочерние - ГПС,другие,ЧПО,ВПО 
+//        totalRow.Childes.AddRange(rowsForTotal);
+//            //добавляем в дочерние - ФПС,другие,ЧПО,ВПО 
+//        totalRow.Childes.Add(fpsRow);
+//            var asfRow = territorialRows.Where(c => c.Category == "АСФ").FirstOrDefault();
+//        if(asfRow != null)
+//            totalRow.Childes.Add(asfRow);
+//        if (totalRow != null) territorialRows.Add(totalRow);
+
+//        result.AddRange(territorialRows);
+//            #endregion
+//        allPivotRows = result;
+//        return result;
+//    }
+
+
+

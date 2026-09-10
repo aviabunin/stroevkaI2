@@ -41,6 +41,7 @@ namespace stroevkaI.Services
             var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json);
         }
+        public string GetBasePath() => _basePath;
     }
 
     public class PchData

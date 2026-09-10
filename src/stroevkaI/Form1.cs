@@ -17,10 +17,15 @@ namespace stroevkaI
     {
         #region Параметры программы
 
+
         public stroevkaContext context = new stroevkaContext();
+        private JsonDataService _jsonService;
+        private AppStatusService _appStatus;
+        private PivotTreeBuilder _treeBuilder;
+        private System.Windows.Forms.Timer _autoSaveTimer;
+
         JsonDataService jsonService;// = new JsonDataService(@"\\server\shared\psg_data"); // сетевой путь
         private DataSyncManager _syncManager;
-        private System.Windows.Forms.Timer _autoSaveTimer;
 
         private static string knownExcelFolder = Directory.GetCurrentDirectory() + @"\отчеты\";
         private string templatePath = knownExcelFolder + @"\шаблоны\";
@@ -53,127 +58,180 @@ namespace stroevkaI
         #endregion
 
         #region События формы
+
+        private AppConfig _config = AppConfig.Load();
         public Form1()
         {
             InitializeComponent();
 
-            this.EquipmentDataGridView.AutoGenerateColumns = false;
-            this.PivotRowGrid.AutoGenerateColumns = false;
 
-            karaulTextBox.Text = "       Караул № "+караул.ToString();
+            EquipmentDataGridView.AutoGenerateColumns = false;
+            PivotRowGrid.AutoGenerateColumns = false;
 
-            // Скрываем левую панель при запуске
-            //splitContainer1.Panel1Collapsed = true;
-            //isLeftPanelVisible = true;
+            karaulTextBox.Text = "       Караул № " + караул;
 
+            // Сразу пустой источник, чтобы грид был не null, а пустой
+            PivotRowGrid.DataSource = new List<PivotRow>();
+            EquipmentDataGridView.DataSource = new List<PivotRow>();
 
-            // Подписываемся на события грида
+            // Подписки на события гридов
             EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
             EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
             EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
             EquipmentDataGridView.DoubleClick += EquipmentDataGridView_DoubleClick;
             EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
-            // Запускаем таймеры
-            StartKaraulTimer();
-            StartClockTimer();
 
             _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
+
+            // Всё тяжёлое — в Form1_Load
+            this.Load += Form1_Load;
+            //this.EquipmentDataGridView.AutoGenerateColumns = false;
+            //this.PivotRowGrid.AutoGenerateColumns = false;
+
+            //karaulTextBox.Text = "       Караул № "+караул.ToString();
+
+            //// Подписываемся на события грида
+            //EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
+            //EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
+            //EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
+            //EquipmentDataGridView.DoubleClick += EquipmentDataGridView_DoubleClick;
+            //EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
+            //// Запускаем таймеры
+            //StartKaraulTimer();
+            //StartClockTimer();
+
+            //_columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
         }
 
         private async void Form1_Load(object sender, EventArgs e)
+        //{
+        //    // Принудительно обновляем караул при загрузке
+        //        UpdateKaraul();
+
+        //    string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
+        //    jsonService = new JsonDataService(baseDir); // сетевой путь
+        //    cachedPchList = FireEquipsPivotRepository.getPchList();
+        //    cachedPsgList = FireEquipsPivotRepository.getPsgList();
+        //    statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
+        //    await BuildTreeAsync();
+
+        //    // Формируем список ПСГ (Загружаем список ПСГ)
+        //    LoadPsgList();
+
+        //    // Инициализируем rootPsgName из Settings
+        //    rootPsgName = Settings.Default.rootGarn;
+        //    if (string.IsNullOrEmpty(rootPsgName))
+        //    {
+        //        rootPsgName = "Территориальный";
+        //        Settings.Default.rootGarn = rootPsgName;
+        //        Settings.Default.Save();
+        //    }
+
+        //    // Устанавливаем выбранный ПСГ в комбобоксе
+        //    if (!string.IsNullOrEmpty(rootPsgName))
+        //    {
+        //        int index = cmbPsg.FindStringExact(rootPsgName);
+        //        if (index >= 0)
+        //        {
+        //            cmbPsg.SelectedIndex = index;
+        //        }
+        //        else
+        //        {
+        //            // Если не найден, выбираем территориальный
+        //            int territorialIndex = cmbPsg.FindStringExact("Территориальный");
+        //            if (territorialIndex >= 0)
+        //            {
+        //                cmbPsg.SelectedIndex = territorialIndex;
+        //                rootPsgName = "Территориальный";
+        //                Settings.Default.rootGarn = rootPsgName;
+        //                Settings.Default.Save();
+        //            }
+        //        }
+        //    }
+
+        //    // Загружаем корневой гарнизон
+        //    rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
+        //    EquipmentDataGridView.AutoGenerateColumns = false;
+
+        //    //Загрузка данных - из json 
+        //    // Пока для районного ПСГ Костомукши - и сравним
+        //    //LoadDataForPsg(rootPsg); пока перенесём это  в инициализацию редактора
+
+
+
+        //    InitGrid();
+
+        //    InitPivotGrid(rootPsgName);
+
+        //}
         {
-            // Принудительно обновляем караул при загрузке
+            try
+            {
+                UpdateStatus("Проверка доступности сервисов...");
+
+                _jsonService = new JsonDataService(
+                    Path.Combine(AppContext.BaseDirectory, _config.JsonLocalPath));
+                _appStatus = new AppStatusService(
+                    _jsonService.GetBasePath(),
+                    _config.JsonNetworkPath,
+                    _config.NetworkDrives);
+                _treeBuilder = new PivotTreeBuilder(context, _appStatus, _jsonService);
+
+                await _appStatus.RefreshAsync(context);
+                UpdateStatus($"БД: {_appStatus.Status.DatabaseStatus} | Источник: {_appStatus.Status.ActiveSource}");
+
+                // Строим список ПСГ — он нужен для cmbPsg
+                allPsgs = FireEquipsPivotRepository.LoadAllPsgs();
+                LoadPsgList();   // заполнит cmbPsg и НЕ вызовет SelectedIndexChanged,
+                                 // если мы временно отпишем обработчик
+
+                // Восстанавливаем сохранённое имя ПСГ
+                rootPsgName = Settings.Default.rootGarn;
+                if (string.IsNullOrEmpty(rootPsgName)) rootPsgName = "Территориальный";
+
+                // Первый расчёт дерева — вот здесь реальная задержка
+                UpdateStatus($"Построение дерева для «{rootPsgName}»...");
+                await BuildTreeAsync(rootPsgName);
+                UpdateStatus("Готово");
+
+                // Таймеры
+                StartKaraulTimer();
+                StartClockTimer();
+
                 UpdateKaraul();
-
-            string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
-            jsonService = new JsonDataService(baseDir); // сетевой путь
-            cachedPchList = FireEquipsPivotRepository.getPchList();
-            cachedPsgList = FireEquipsPivotRepository.getPsgList();
-            statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
-            await BuildTreeAsync();
-
-            // Формируем список ПСГ (Загружаем список ПСГ)
-            LoadPsgList();
-
-            // Инициализируем rootPsgName из Settings
-            rootPsgName = Settings.Default.rootGarn;
-            if (string.IsNullOrEmpty(rootPsgName))
-            {
-                rootPsgName = "Территориальный";
-                Settings.Default.rootGarn = rootPsgName;
-                Settings.Default.Save();
             }
-
-            // Устанавливаем выбранный ПСГ в комбобоксе
-            if (!string.IsNullOrEmpty(rootPsgName))
+            catch (Exception ex)
             {
-                int index = cmbPsg.FindStringExact(rootPsgName);
-                if (index >= 0)
-                {
-                    cmbPsg.SelectedIndex = index;
-                }
-                else
-                {
-                    // Если не найден, выбираем территориальный
-                    int territorialIndex = cmbPsg.FindStringExact("Территориальный");
-                    if (territorialIndex >= 0)
-                    {
-                        cmbPsg.SelectedIndex = territorialIndex;
-                        rootPsgName = "Территориальный";
-                        Settings.Default.rootGarn = rootPsgName;
-                        Settings.Default.Save();
-                    }
-                }
+                MessageBox.Show($"Ошибка инициализации: {ex.Message}", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                UpdateStatus("Ошибка инициализации");
             }
+        }
+        private async Task BuildTreeAsync(string psgName)
+        {
+            var rows = await _treeBuilder.GeneratePivotRowsAsync(psgName, forceReload: true);
+            PivotRowGrid.DataSource = rows;
 
-            // Загружаем корневой гарнизон
-            rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
-            EquipmentDataGridView.AutoGenerateColumns = false;
-
-            //Загрузка данных - из json 
-            // Пока для районного ПСГ Костомукши - и сравним
-            //LoadDataForPsg(rootPsg); пока перенесём это  в инициализацию редактора
-
-
-
-            InitGrid();
-
-            InitPivotGrid(rootPsgName);
-
+            // При желании здесь же наполняем второй грид тем же списком
+            EquipmentDataGridView.DataSource = rows;
+            HighlightDatafilledRows();
         }
 
+        // Загрузка списка ПСГ — без побочных эффектов
         private void LoadPsgList()
         {
             try
             {
-                allPsgs = FireEquipsPivotRepository.LoadAllPsgs();
-
-
-                // Получаем список ПСГ (уникальные названия)
-                var psgNames = allPsgs
-                    .Select(p => p.Garnizon)
-                    .ToList();
-
+                var psgNames = allPsgs.Select(p => p.Garnizon).ToList();
                 cmbPsg.Items.Clear();
-                //cmbPsg.Items.Add("Территориальный");
                 foreach (var name in psgNames)
-                {
                     cmbPsg.Items.Add(name);
-                }
 
-                // Если есть сохранённое значение, выбираем его
-                if (!string.IsNullOrEmpty(Settings.Default.rootGarn))
-                {
-                    int index = cmbPsg.FindStringExact(Settings.Default.rootGarn);
-                    if (index >= 0)
-                    {
-                        cmbPsg.SelectedIndex = index;
-                    }
-                }
-                else if (cmbPsg.Items.Count > 0)
-                {
-                    cmbPsg.SelectedIndex = 0;
-                }
+                // Временно снимаем обработчик, чтобы не дёргать CmbPsg_SelectedIndexChanged
+                cmbPsg.SelectedIndexChanged -= CmbPsg_SelectedIndexChanged;
+                int idx = cmbPsg.FindStringExact(rootPsgName);
+                cmbPsg.SelectedIndex = idx >= 0 ? idx : 0;
+                cmbPsg.SelectedIndexChanged += CmbPsg_SelectedIndexChanged;
             }
             catch (Exception ex)
             {
@@ -181,27 +239,32 @@ namespace stroevkaI
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
         #endregion
 
         #region Обработка событий от ComboBox
-        private void CmbPsg_SelectedIndexChanged(object sender, EventArgs e)
+        private async void CmbPsg_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (cmbPsg.SelectedItem == null) return;
 
             rootPsgName = cmbPsg.SelectedItem.ToString();
-
-            //PsgByName
-
-            rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
-            rootPsg1 = FireEquipsPivotRepository.PsgByName(rootPsgName);
-            
-            // Сохраняем в Settings
             Settings.Default.rootGarn = rootPsgName;
             Settings.Default.Save();
 
-            refreshGrid(rootPsgName);
-            InitPivotGrid(rootPsgName);
-            UpdateStatus($"Выбран гарнизон: {rootPsgName}");
+            rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
+            rootPsg1 = FireEquipsPivotRepository.PsgByName(rootPsgName);
+
+            UpdateStatus($"Загрузка «{rootPsgName}»...");
+
+            try
+            {
+                await BuildTreeAsync(rootPsgName);
+                UpdateStatus($"Выбран гарнизон: {rootPsgName}");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Ошибка: {ex.Message}");
+            }
         }
         #endregion
 
@@ -239,14 +302,25 @@ namespace stroevkaI
             PivotRowGrid.DataSource = lst;
         }
 
-        private void refreshGrid(string _psgname)
+        // refreshGrid — обновляет оба грида
+        private async void refreshGrid(string psgName)
         {
-            if (_psgname == null) return;
+            if (string.IsNullOrEmpty(psgName)) return;
 
-            gridList = FireEquipsPivotRepository.LoadEquipsByPsg(_psgname);
+            gridList = FireEquipsPivotRepository.LoadEquipsByPsg(psgName);
             EquipmentDataGridView.DataSource = gridList;
-            InitPivotGrid(_psgname);
+
+            PivotTreeBuilder.InvalidateCache(psgName);
+            await InitPivotGridAsync(psgName);
+
             HighlightDatafilledRows();
+        }
+        // InitPivotGrid теперь не нужен — заменён на BuildTreeAsync.
+        // Если используется в других местах — оставьте как обёртку:
+        private async Task InitPivotGridAsync(string rootName)
+        {
+            var rows = await _treeBuilder.GeneratePivotRowsAsync(rootName);
+            PivotRowGrid.DataSource = rows;
         }
 
         private void HighlightDatafilledRows()
@@ -517,9 +591,9 @@ namespace stroevkaI
 
         //Строим дерево узлов и дерево PivotRows
         async private Task BuildTreeAsync() {
-            PivotTreeBuilder b = new PivotTreeBuilder();
-            Models.ReportNode  root = await b.BuildTree();
-            pivotSource  = await b.GeneratePivotRows(root);        
+            //PivotTreeBuilder b = new PivotTreeBuilder();
+            //Models.ReportNode  root = await b.BuildTree();
+            //pivotSource  = await b.GeneratePivotRows(root);        
         }
         int currentPchId = 1;
         private PchData CollectCurrentData()
