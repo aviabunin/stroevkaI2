@@ -27,7 +27,8 @@ namespace stroevkaI.Services
                 return null;
 
             var json = await File.ReadAllTextAsync(filePath);
-            return JsonSerializer.Deserialize<PchData>(json);
+            var data = JsonSerializer.Deserialize<PchData>(json);
+            return data;
         }
 
         public async Task SaveDataAsync(PchData data)

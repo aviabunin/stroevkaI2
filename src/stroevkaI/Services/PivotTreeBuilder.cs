@@ -3,23 +3,59 @@ using stroevkaI.Models;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace stroevkaI.Services { 
 public class PivotTreeBuilder
 {
    static  List<PivotRow> allPivotRows;
+        static PchData data;
+
     Dictionary<int, Psgstat> _psgDict;
     List<PsgTotalRow> psg_total_rows;
     ReportNode root = null;
     static Dictionary<int, List<PivotRow>> psgChildes;
     public static stroevkaContext _context = new stroevkaContext();
-        public static Dictionary<int, CacheNachkar> nachkarBySubdiv;
+    public static Dictionary<int, CacheNachkar> nachkarBySubdiv;
+
+
+    string netStatus = "offLine";
+
+    JsonDataService jsonService;// = new JsonDataService(@"\\server\shared\psg_data"); // сетевой путь
+    private DataSyncManager _syncManager;
 
     public PivotTreeBuilder()
-    {
+{
+
+}
+
+  
+    async public Task<PchData>  getPchData() {
+
+        string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
+        jsonService = new JsonDataService(baseDir); // сетевой путь
+        data = new PchData();
+        if (netStatus == "online")
+        {
+
+            // 2. Загружаем сырые данные для листьев (как было)
+            data.PchId = 11;
+            data.SredstvaList = _context.Sredstvas.ToList();
+            data.SostavList = _context.Sostavs.ToList();
+            data.SizodsList = _context.Sizods.ToList();
+            data.PenasList = _context.Penas.ToList();
+            data.KostymsList = _context.Kostyms.ToList();
+            data.WatersList = _context.Waters.ToList();
+            data.ContactsList = _context.Contacts.ToList();
+        }
+        else
+            data = await jsonService.LoadDataAsync(11);
+
+        return data;
 
     }
 
-    public ReportNode BuildTree()
+
+     async public Task<ReportNode> BuildTree()
     {
        var allNodes = _context.Psgstats
             .Where(p => p.Used == 1) 
@@ -28,16 +64,21 @@ public class PivotTreeBuilder
         // Заполняем словарь для быстрого доступа по Id
         _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
 
-        // 2. Загружаем сырые данные для листьев (как было)
-        var sredstvaList = _context.Sredstvas.ToList();
-        var sostavList = _context.Sostavs.ToList();
-        var sizodList = _context.Sizods.ToList();
-        var penasList = _context.Penas.ToList();
-        var kostymsList = _context.Kostyms.ToList();
-        var watersList = _context.Waters.ToList();
-        var contactsList = _context.Contacts.ToList();
-        var psgdataList = _context.Psgdata.ToList();
-        var nachkarsList = _context.CacheNachkars.ToList();
+
+            data =  await getPchData();
+
+            var sredstvaList = data.SredstvaList;
+            var sostavList = data.SostavList;
+            var sizodList = data.SizodsList;
+            var penasList = data.PenasList;
+            var kostymsList = data.KostymsList;
+            var watersList = data.WatersList;
+            var contactsList = data.ContactsList;
+
+            var psgdataList = _context.Psgdata.ToList();
+            var nachkarsList = _context.CacheNachkars.ToList();
+
+
 
             // Группируем данные по subdivision_id (Id узла)
             var sredstvaBySubdiv = sredstvaList
@@ -238,11 +279,11 @@ public class PivotTreeBuilder
     // -------------------------------------------
     // 3.4 ГЕНЕРАЦИЯ СТРОК PivotRow
     // -------------------------------------------
-    public List<PivotRow> GeneratePivotRows(ReportNode rootNode)
+    async public Task<List<PivotRow>> GeneratePivotRows(ReportNode rootNode)
     {
         #region Инициализация колонок и расчёт строк для листьев (ПЧ)
         if (rootNode == null)
-            rootNode = BuildTree();
+            rootNode = await BuildTree();
 
         InitializeColumnConfigs();
         var result = new List<PivotRow>();
@@ -1027,7 +1068,7 @@ public class PivotTreeBuilder
     {
         List<PivotRow> lst = new List<PivotRow>();
             if (allPivotRows == null)
-                return null;
+                return lst;
         PivotRow psgRow = allPivotRows.Where(c => ((c.ПСГ.Contains(_psgname)) && (c.Category.Contains("всего")))).FirstOrDefault();//Лучше по Id ПЧ или гарнизона
         if (psgRow == null) return lst;
         lst.Add(psgRow);

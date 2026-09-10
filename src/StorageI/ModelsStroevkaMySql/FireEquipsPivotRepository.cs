@@ -202,24 +202,22 @@ namespace StorageI.ModelsStroevkaMySql
                 }
             }
         }
-        public static List<FirePsgStat> LoadAllPsgs()
+        public static List<Psg> LoadAllPsgs()
         {
             using (var context = new stroevkaContext())
             {
                 try
                 {
                     // Загружаем все записи, где есть название гарнизона
-                    var psgs = context.FirePsgStats
-                        .Where(p => p.Псг != null && p.Псг != "")
-                        .OrderBy(p => p.Псг)
-                        .ThenBy(p => p.Пч)
+                    var psgs = context.Psgs
+                        .OrderBy(p => p.Norder)
                         .ToList();
 
                     return psgs;
                 }
                 catch (Exception ex)
                 {
-                    return new List<FirePsgStat>();
+                    return new List<Psg>();
                 }
             }
         }

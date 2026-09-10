@@ -36,7 +36,7 @@ namespace stroevkaI
         public string rootPsgName = "";
         private FirePsgStat selectedItem = null;
         private PivotRow selectedItem1 = null;
-        private List<FirePsgStat> allPsgs;
+        private List<Psg> allPsgs;
         private bool isLeftPanelVisible = false;
 
         private System.Windows.Forms.Timer karaulTimer;
@@ -56,10 +56,9 @@ namespace stroevkaI
         public Form1()
         {
             InitializeComponent();
-            BuildTree();
+
             this.EquipmentDataGridView.AutoGenerateColumns = false;
             this.PivotRowGrid.AutoGenerateColumns = false;
-            //this.btnTools.Sp.sp = true;
 
             karaulTextBox.Text = "       Караул № "+караул.ToString();
 
@@ -67,7 +66,33 @@ namespace stroevkaI
             //splitContainer1.Panel1Collapsed = true;
             //isLeftPanelVisible = true;
 
-            // Загружаем список ПСГ
+
+            // Подписываемся на события грида
+            EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
+            EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
+            EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
+            EquipmentDataGridView.DoubleClick += EquipmentDataGridView_DoubleClick;
+            EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
+            // Запускаем таймеры
+            StartKaraulTimer();
+            StartClockTimer();
+
+            _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
+        }
+
+        private async void Form1_Load(object sender, EventArgs e)
+        {
+            // Принудительно обновляем караул при загрузке
+                UpdateKaraul();
+
+            string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
+            jsonService = new JsonDataService(baseDir); // сетевой путь
+            cachedPchList = FireEquipsPivotRepository.getPchList();
+            cachedPsgList = FireEquipsPivotRepository.getPsgList();
+            statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
+            await BuildTreeAsync();
+
+            // Формируем список ПСГ (Загружаем список ПСГ)
             LoadPsgList();
 
             // Инициализируем rootPsgName из Settings
@@ -112,31 +137,9 @@ namespace stroevkaI
 
 
             InitGrid();
-      
+
             InitPivotGrid(rootPsgName);
-            // Подписываемся на события грида
-            EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
-            EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
-            EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
-            EquipmentDataGridView.DoubleClick += EquipmentDataGridView_DoubleClick;
-            EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
-            // Запускаем таймеры
-            StartKaraulTimer();
-            StartClockTimer();
 
-            _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            // Принудительно обновляем караул при загрузке
-                UpdateKaraul();
-
-            string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
-            jsonService = new JsonDataService(baseDir); // сетевой путь
-            cachedPchList = FireEquipsPivotRepository.getPchList();
-            cachedPsgList = FireEquipsPivotRepository.getPsgList();
-            statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
         }
 
         private void LoadPsgList()
@@ -144,21 +147,15 @@ namespace stroevkaI
             try
             {
                 allPsgs = FireEquipsPivotRepository.LoadAllPsgs();
-                if (allPsgs == null)
-                {
-                    allPsgs = new List<FirePsgStat>();
-                }
+
 
                 // Получаем список ПСГ (уникальные названия)
                 var psgNames = allPsgs
-                    .Where(p => !string.IsNullOrEmpty(p.Псг) && p.Isitog != 1)
-                    .Select(p => p.Псг)
-                    .Distinct()
-                    .OrderBy(p => p)
+                    .Select(p => p.Garnizon)
                     .ToList();
 
                 cmbPsg.Items.Clear();
-                cmbPsg.Items.Add("Территориальный");
+                //cmbPsg.Items.Add("Территориальный");
                 foreach (var name in psgNames)
                 {
                     cmbPsg.Items.Add(name);
@@ -480,7 +477,7 @@ namespace stroevkaI
             }
         }
 
-        private void ListBoxTools_SelectedIndexChanged(object sender, EventArgs e)
+        async private void ListBoxTools_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (listBoxTools.SelectedItem == null) return;
 
@@ -500,7 +497,7 @@ namespace stroevkaI
             else if (selectedItem == "Сравнение всех")
                 compareAllPsg();
             else if (selectedItem == "TreeBuilder") { 
-                BuildTree();
+                 await BuildTreeAsync();
             }
         }
         private async void SaveCurrentPchData() {
@@ -517,11 +514,12 @@ namespace stroevkaI
          //   await _syncManager.SaveDataAsync(data);
             MessageBox.Show("Данные сохранены.");
         }
+
         //Строим дерево узлов и дерево PivotRows
-        private void BuildTree() {
+        async private Task BuildTreeAsync() {
             PivotTreeBuilder b = new PivotTreeBuilder();
-            Models.ReportNode  root = b.BuildTree();
-            pivotSource  = b.GeneratePivotRows(root);        
+            Models.ReportNode  root = await b.BuildTree();
+            pivotSource  = await b.GeneratePivotRows(root);        
         }
         int currentPchId = 1;
         private PchData CollectCurrentData()
@@ -545,11 +543,7 @@ namespace stroevkaI
             }
             return data;
         }
-        //public List<Contact> ContactsList { get; set; } = new();
-        //public List<Water> WatersList { get; set; } = new();
-        //public List<Pena> PenasList { get; set; } = new();
-        //public List<Sizod> SizodsList { get; set; } = new();
-        //public List<Kostym> KostymsList { get; set; } = new();
+
         private void BtnCompare_Click(object sender, EventArgs e)
         {
             string rezStr = "";
@@ -828,7 +822,7 @@ namespace stroevkaI
                 });
 
                 // Ожидание обновления грида (3 секунды)
-                System.Threading.Thread.Sleep(3000);
+                //System.Threading.Thread.Sleep(3000);
 
                 var results = CompareSinglePsg(psgName);
                 allResults[psgName] = results;
