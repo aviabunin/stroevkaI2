@@ -41,10 +41,12 @@ namespace stroevkaI.Services
         {
             var data = new PchData();
 
+            bool isTerr = psgName.Contains("Террит");
             // Найти psgstat-строку по имени (это может быть районный ПСГ или Территориальный)
             var psgRow = _context.Psgstats
                 .AsNoTracking()
                 .FirstOrDefault(p => p.Used == 1 && p.Name == psgName);
+
 
             if (psgRow == null)
                 return data;
@@ -62,28 +64,28 @@ namespace stroevkaI.Services
 
                 // Параллельная загрузка
                 var sredstvaTask = _context.Sredstvas.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var sostavTask = _context.Sostavs.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var sizodsTask = _context.Sizods.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var penasTask = _context.Penas.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var kostymsTask = _context.Kostyms.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var watersTask = _context.Waters.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var contactsTask = _context.Contacts.AsNoTracking()
-                    .Where(s => s.SubdivisionId.HasValue && subdivIds.Contains(s.SubdivisionId.Value))
+                    .Where(s => isTerr || subdivIds.Contains(s.SubdivisionId.Value))
                     .ToListAsync();
                 var nachkarTask = _context.CacheNachkars.AsNoTracking()
-                    .Where(n => subdivIds.Contains(n.SubdivisionId))
+                    .Where(n => isTerr || subdivIds.Contains(n.SubdivisionId))
                     .ToListAsync();
 
                 await Task.WhenAll(sredstvaTask, sostavTask, sizodsTask, penasTask,
@@ -333,12 +335,11 @@ namespace stroevkaI.Services
         // ГЕНЕРАЦИЯ PivotRow (остаётся почти без изменений, но без
         // загрузки всех данных — она уже сделана в BuildTreeAsync)
         // ==========================================================
+
         public async Task<List<PivotRow>> GeneratePivotRowsAsync(string psgName, bool forceReload = false)
         {
             if (!forceReload && _pivotCache.TryGetValue(psgName, out var cached))
                 return cached;
-
-            var sw = System.Diagnostics.Stopwatch.StartNew();
 
             var rootNode = await BuildTreeAsync(psgName);
             if (rootNode == null)
@@ -349,7 +350,6 @@ namespace stroevkaI.Services
             }
 
             InitializeColumnConfigs();
-
             var result = new List<PivotRow>();
 
             // 1. Листья
@@ -358,64 +358,72 @@ namespace stroevkaI.Services
                 result.Add(CreateLeafRow(leaf));
 
             var psgChildes = result
-                .GroupBy(c => c.Parent)
-                .ToDictionary(g => g.Key ?? 0, g => g.ToList());
+                .GroupBy(c => c.Parent ?? 0)
+                .ToDictionary(g => g.Key, g => g.ToList());
 
-            // 2. Итоги по районным ПСГ
-            var psgNodes = rootNode.Children.Where(c => c.Children.Any()).ToList();
+            // 2. Определяем, что суммировать: 
+            //    - если корень территориальный (id=11) — берём его детей-ПСГ (те, у которых есть свои дети)
+            //    - иначе корень сам является районным ПСГ — суммируем по нему одному
+            bool isTerritorial = (rootNode.Id == 11);
+
+            var psgNodes = isTerritorial
+                ? rootNode.Children.Where(c => c.Children.Any()).ToList()
+                : new List<ReportNode> { rootNode };
+
             var allPsgRows = new List<PivotRow>();
             foreach (var psgNode in psgNodes)
             {
                 var psgRows = ComputePsgSummaryRows(psgNode);
                 var psgВсего = psgRows.FirstOrDefault(c => c.Category == "всего");
-                if (psgВсего != null && psgChildes.TryGetValue(psgВсего.PchId, out var childes))
-                    psgВсего.Childes.AddRange(childes);
 
-                result.AddRange(psgRows);
+                result.Add(psgВсего);
+                result.AddRange(psgВсего.Childes);
                 allPsgRows.AddRange(psgRows);
             }
 
-            // 3. Территориальные итоги
-            var territorialRows = new List<PivotRow>();
-            foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
+            // 3. Территориальные итоги — только когда корень территориальный
+            if (isTerritorial)
             {
-                var rows = GetPsgRowsByCategory(allPsgRows, cat);
-                var row = CreateTerritorialRow(rootNode, cat, rows);
-                if (row != null) territorialRows.Add(row);
+                var territorialRows = new List<PivotRow>();
+
+                foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
+                {
+                    var rows = GetPsgRowsByCategory(allPsgRows, cat);
+                    var row = CreateTerritorialRow(rootNode, cat, rows);
+                    if (row != null) territorialRows.Add(row);
+                }
+
+                var gpsRows = GetPsgRowsByCategory(allPsgRows, "ФПС");
+                gpsRows.AddRange(GetPsgRowsByCategory(allPsgRows, "ППС"));
+                var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
+                if (gpsRow != null) territorialRows.Add(gpsRow);
+
+                var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);
+                if (fpsRow != null) territorialRows.Add(fpsRow);
+
+                var rowsForTotal = territorialRows
+                    .Where(r => r.Category == "ГПС" || r.Category == "другие" ||
+                                r.Category == "ЧПО" || r.Category == "ВПО")
+                    .ToList();
+
+                var totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
+                if (totalRow != null)
+                {
+                    totalRow.Childes.AddRange(result.Where(c => c.Category == "всего").ToList());
+                    totalRow.Childes.AddRange(rowsForTotal);
+                    if (fpsRow != null) totalRow.Childes.Add(fpsRow);
+                    var asfRow = territorialRows.FirstOrDefault(c => c.Category == "АСФ");
+                    if (asfRow != null) totalRow.Childes.Add(asfRow);
+                    territorialRows.Add(totalRow);
+                }
+
+                result.AddRange(territorialRows);
             }
-
-            var gpsRows = GetPsgRowsByCategory(allPsgRows, "ФПС");
-            gpsRows.AddRange(GetPsgRowsByCategory(allPsgRows, "ППС"));
-            var gpsRow = CreateTerritorialRow(rootNode, "ГПС", gpsRows);
-            if (gpsRow != null) territorialRows.Add(gpsRow);
-
-            var fpsRow = ComputeTerritorialFpsRow(rootNode, allPsgRows);
-            if (fpsRow != null) territorialRows.Add(fpsRow);
-
-            var rowsForTotal = territorialRows
-                .Where(r => r.Category == "ГПС" || r.Category == "другие" ||
-                            r.Category == "ЧПО" || r.Category == "ВПО")
-                .ToList();
-            var totalRow = CreateTerritorialRow(rootNode, "всего", rowsForTotal);
-            if (totalRow != null)
-            {
-                totalRow.Childes.AddRange(result.Where(c => c.Category == "всего").ToList());
-                totalRow.Childes.AddRange(rowsForTotal);
-                if (fpsRow != null) totalRow.Childes.Add(fpsRow);
-                var asfRow = territorialRows.FirstOrDefault(c => c.Category == "АСФ");
-                if (asfRow != null) totalRow.Childes.Add(asfRow);
-                territorialRows.Add(totalRow);
-            }
-
-            result.AddRange(territorialRows);
 
             _pivotCache[psgName] = result;
             _cacheTime[psgName] = DateTime.Now;
 
-            sw.Stop();
-            System.Diagnostics.Debug.WriteLine($"GeneratePivotRowsAsync({psgName}): {sw.ElapsedMilliseconds} ms, rows={result.Count}");
-
-            return result;
+            return result.OrderBy(c=>c.Norder).ToList();
         }
 
         public static void InvalidateCache(string psgName)
