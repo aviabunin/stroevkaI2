@@ -25,6 +25,7 @@ namespace StorageI.ModelsStroevkaMySql
         public virtual DbSet<Pena> Penas { get; set; } = null!;
         public virtual DbSet<Personal> Personals { get; set; } = null!;
         public virtual DbSet<Personalpost> Personalposts { get; set; } = null!;
+        public virtual DbSet<PivotRow> PivotRows { get; set; } = null!;
         public virtual DbSet<Post> Posts { get; set; } = null!;
         public virtual DbSet<Psg> Psgs { get; set; } = null!;
         public virtual DbSet<PsgTotalRow> PsgTotalRows { get; set; } = null!;
@@ -1356,6 +1357,435 @@ namespace StorageI.ModelsStroevkaMySql
                     .WithMany(p => p.Personalposts)
                     .HasForeignKey(d => d.PostId)
                     .HasConstraintName("FK_personalpost_PostId");
+            });
+
+            modelBuilder.Entity<PivotRow>(entity =>
+            {
+                entity.ToTable("pivot_rows");
+
+                entity.Property(e => e.Id)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("id");
+
+                entity.Property(e => e.AcBr)
+                    .HasPrecision(65)
+                    .HasColumnName("ac_br");
+
+                entity.Property(e => e.AcRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("ac_remont");
+
+                entity.Property(e => e.AcRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("ac_rezerv");
+
+                entity.Property(e => e.AclBr)
+                    .HasPrecision(65)
+                    .HasColumnName("acl_br");
+
+                entity.Property(e => e.AclRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("acl_remont");
+
+                entity.Property(e => e.AclRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("acl_rezerv");
+
+                entity.Property(e => e.AlBr)
+                    .HasPrecision(65)
+                    .HasColumnName("al_br");
+
+                entity.Property(e => e.AlRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("al_remont");
+
+                entity.Property(e => e.AlRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("al_rezerv");
+
+                entity.Property(e => e.Category)
+                    .HasMaxLength(100)
+                    .HasColumnName("category");
+
+                entity.Property(e => e.Datafilled)
+                    .HasMaxLength(4)
+                    .HasColumnName("datafilled")
+                    .IsFixedLength();
+
+                entity.Property(e => e.Isitog)
+                    .HasColumnType("bigint(20)")
+                    .HasColumnName("isitog");
+
+                entity.Property(e => e.LastModified)
+                    .HasColumnType("datetime")
+                    .HasColumnName("last_modified");
+
+                entity.Property(e => e.Norder)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("norder");
+
+                entity.Property(e => e.Parent)
+                    .HasColumnType("bigint(20)")
+                    .HasColumnName("parent");
+
+                entity.Property(e => e.PchId)
+                    .HasColumnType("bigint(20)")
+                    .HasColumnName("pch_id");
+
+                entity.Property(e => e.PsgId)
+                    .HasColumnType("int(11)")
+                    .HasColumnName("psg_id");
+
+                entity.Property(e => e.RowId1)
+                    .HasMaxLength(16)
+                    .HasColumnName("row_id1");
+
+                entity.Property(e => e.SizodBr)
+                    .HasPrecision(65)
+                    .HasColumnName("sizod_br");
+
+                entity.Property(e => e.SizodRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("sizod_rezerv");
+
+                entity.Property(e => e.SourceVersion)
+                    .HasColumnType("bigint(20)")
+                    .HasColumnName("source_version")
+                    .HasDefaultValueSql("'0'");
+
+                entity.Property(e => e.Tofirst)
+                    .HasPrecision(65)
+                    .HasColumnName("tofirst");
+
+                entity.Property(e => e.Totow)
+                    .HasPrecision(65)
+                    .HasColumnName("totow");
+
+                entity.Property(e => e.АвBr)
+                    .HasPrecision(65)
+                    .HasColumnName("ав_br");
+
+                entity.Property(e => e.АвRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("ав_remont");
+
+                entity.Property(e => e.АвRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("ав_rezerv");
+
+                entity.Property(e => e.АвсBr)
+                    .HasPrecision(65)
+                    .HasColumnName("АВС_br");
+
+                entity.Property(e => e.АвсRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("АВС_rezerv");
+
+                entity.Property(e => e.АнрBr)
+                    .HasPrecision(65)
+                    .HasColumnName("анр_br");
+
+                entity.Property(e => e.АнрRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("анр_remont");
+
+                entity.Property(e => e.АнрRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("анр_rezerv");
+
+                entity.Property(e => e.АрBr)
+                    .HasPrecision(65)
+                    .HasColumnName("ар_br");
+
+                entity.Property(e => e.АрRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("ар_remont");
+
+                entity.Property(e => e.АрRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("ар_rezerv");
+
+                entity.Property(e => e.АсаBr)
+                    .HasPrecision(65)
+                    .HasColumnName("аса_br");
+
+                entity.Property(e => e.АсаRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("аса_remont");
+
+                entity.Property(e => e.АсаRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("аса_rezerv");
+
+                entity.Property(e => e.АсаАппАсмBr)
+                    .HasPrecision(65)
+                    .HasColumnName("аса_апп_асм_br");
+
+                entity.Property(e => e.АсаАппАсмRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("аса_апп_асм_remont");
+
+                entity.Property(e => e.АсаАппАсмRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("аса_апп_асм_rezerv");
+
+                entity.Property(e => e.АсмпПсаBr)
+                    .HasPrecision(65)
+                    .HasColumnName("асмп_пса_br");
+
+                entity.Property(e => e.АсмпПсаRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("асмп_пса_remont");
+
+                entity.Property(e => e.АсмпПсаRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("асмп_пса_rezerv");
+
+                entity.Property(e => e.АсмрхBr)
+                    .HasPrecision(65)
+                    .HasColumnName("АСМРХ_br");
+
+                entity.Property(e => e.АсмрхRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("АСМРХ_rezerv");
+
+                entity.Property(e => e.АсоBr)
+                    .HasPrecision(65)
+                    .HasColumnName("асо_br");
+
+                entity.Property(e => e.АсоRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("асо_remont");
+
+                entity.Property(e => e.АсоRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("асо_rezerv");
+
+                entity.Property(e => e.АшBr)
+                    .HasPrecision(65)
+                    .HasColumnName("аш_br");
+
+                entity.Property(e => e.АшRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("аш_remont");
+
+                entity.Property(e => e.АшRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("аш_rezerv");
+
+                entity.Property(e => e.Бензин).HasPrecision(65);
+
+                entity.Property(e => e.Болотоходы)
+                    .HasPrecision(65)
+                    .HasColumnName("болотоходы");
+
+                entity.Property(e => e.Водитель).HasPrecision(63);
+
+                entity.Property(e => e.Всего)
+                    .HasPrecision(65)
+                    .HasColumnName("всего");
+
+                entity.Property(e => e.ВсегоОтс)
+                    .HasPrecision(65)
+                    .HasColumnName("всего_отс");
+
+                entity.Property(e => e.ГасиРасчёт)
+                    .HasPrecision(65)
+                    .HasColumnName("ГАСИ_расчёт");
+
+                entity.Property(e => e.ГасиРезерв)
+                    .HasPrecision(65)
+                    .HasColumnName("ГАСИ_резерв");
+
+                entity.Property(e => e.Гдзс)
+                    .HasPrecision(65)
+                    .HasColumnName("ГДЗС");
+
+                entity.Property(e => e.Диспетчер).HasPrecision(63);
+
+                entity.Property(e => e.Дт)
+                    .HasPrecision(65)
+                    .HasColumnName("ДТ");
+
+                entity.Property(e => e.Ко)
+                    .HasPrecision(63)
+                    .HasColumnName("КО");
+
+                entity.Property(e => e.Командировка)
+                    .HasPrecision(63)
+                    .HasColumnName("командировка");
+
+                entity.Property(e => e.КостюмыДругие)
+                    .HasPrecision(65)
+                    .HasColumnName("костюмы_другие");
+
+                entity.Property(e => e.КостюмыЛ1Таск)
+                    .HasPrecision(65)
+                    .HasColumnName("костюмы_Л-1_ТАСК");
+
+                entity.Property(e => e.КостюмыТок)
+                    .HasPrecision(65)
+                    .HasColumnName("костюмы_ТОК");
+
+                entity.Property(e => e.КпBr)
+                    .HasPrecision(65)
+                    .HasColumnName("кп_br");
+
+                entity.Property(e => e.КпRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("кп_remont");
+
+                entity.Property(e => e.КпRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("кп_rezerv");
+
+                entity.Property(e => e.Мотопомпы)
+                    .HasPrecision(65)
+                    .HasColumnName("мотопомпы");
+
+                entity.Property(e => e.Налицо).HasPrecision(65);
+
+                entity.Property(e => e.Начкар)
+                    .HasMaxLength(255)
+                    .HasColumnName("начкар");
+
+                entity.Property(e => e.Некомплект)
+                    .HasPrecision(63)
+                    .HasColumnName("некомплект");
+
+                entity.Property(e => e.Нк)
+                    .HasPrecision(63)
+                    .HasColumnName("НК");
+
+                entity.Property(e => e.Отпуск)
+                    .HasPrecision(63)
+                    .HasColumnName("отпуск");
+
+                entity.Property(e => e.ПенаРасчёт)
+                    .HasPrecision(65)
+                    .HasColumnName("пена_расчёт");
+
+                entity.Property(e => e.ПенаРезерв)
+                    .HasPrecision(65)
+                    .HasColumnName("пена_резерв");
+
+                entity.Property(e => e.ПлавСредства)
+                    .HasPrecision(65)
+                    .HasColumnName("плав_средства");
+
+                entity.Property(e => e.Пнк)
+                    .HasPrecision(63)
+                    .HasColumnName("ПНК");
+
+                entity.Property(e => e.ПнсBr)
+                    .HasPrecision(65)
+                    .HasColumnName("пнс_br");
+
+                entity.Property(e => e.ПнсRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("пнс_remont");
+
+                entity.Property(e => e.ПнсRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("пнс_rezerv");
+
+                entity.Property(e => e.ПоБольничному)
+                    .HasPrecision(63)
+                    .HasColumnName("по_больничному");
+
+                entity.Property(e => e.ПоСписку)
+                    .HasPrecision(63)
+                    .HasColumnName("по_списку");
+
+                entity.Property(e => e.ПожКорабльКатерBr)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_корабль_катер_br");
+
+                entity.Property(e => e.ПожКорабльКатерRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_корабль_катер_remont");
+
+                entity.Property(e => e.ПожКорабльКатерRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_корабль_катер_rezerv");
+
+                entity.Property(e => e.ПожПоездBr)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_поезд_br");
+
+                entity.Property(e => e.ПожПоездRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_поезд_remont");
+
+                entity.Property(e => e.ПожПоездRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_поезд_rezerv");
+
+                entity.Property(e => e.ПожПоездКорабльBr)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_поезд_корабль_br");
+
+                entity.Property(e => e.ПожПоездКорабльRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_поезд_корабль_remont");
+
+                entity.Property(e => e.ПожПоездКорабльRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("пож_поезд_корабль_rezerv");
+
+                entity.Property(e => e.Пожарный).HasPrecision(63);
+
+                entity.Property(e => e.ПожарныйКорабльРемонт)
+                    .HasPrecision(65)
+                    .HasColumnName("пожарный_корабль_ремонт");
+
+                entity.Property(e => e.ПорошокРасчёт)
+                    .HasPrecision(54)
+                    .HasColumnName("порошок_расчёт");
+
+                entity.Property(e => e.ПорошокРезерв)
+                    .HasPrecision(54)
+                    .HasColumnName("порошок_резерв");
+
+                entity.Property(e => e.Прочее)
+                    .HasPrecision(65)
+                    .HasColumnName("прочее");
+
+                entity.Property(e => e.ПрочиеОтс)
+                    .HasPrecision(65)
+                    .HasColumnName("прочие_отс");
+
+                entity.Property(e => e.Псг)
+                    .HasMaxLength(127)
+                    .HasColumnName("ПСГ");
+
+                entity.Property(e => e.Пч)
+                    .HasMaxLength(127)
+                    .HasColumnName("ПЧ");
+
+                entity.Property(e => e.Резерв)
+                    .HasPrecision(63)
+                    .HasColumnName("резерв");
+
+                entity.Property(e => e.РемонтОсновной)
+                    .HasPrecision(65)
+                    .HasColumnName("ремонт_основной");
+
+                entity.Property(e => e.РемонтСпециальной)
+                    .HasPrecision(65)
+                    .HasColumnName("ремонт_специальной");
+
+                entity.Property(e => e.УксАбгBr)
+                    .HasPrecision(65)
+                    .HasColumnName("укс_абг_br");
+
+                entity.Property(e => e.УксАбгRemont)
+                    .HasPrecision(65)
+                    .HasColumnName("укс_абг_remont");
+
+                entity.Property(e => e.УксАбгRezerv)
+                    .HasPrecision(65)
+                    .HasColumnName("укс_абг_rezerv");
             });
 
             modelBuilder.Entity<Post>(entity =>

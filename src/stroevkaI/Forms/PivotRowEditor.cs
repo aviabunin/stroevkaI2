@@ -10,7 +10,7 @@ namespace stroevkaI.Forms
     public partial class PivotRowEditor : Form
     {
         private int subdivisionId;
-        private PivotRow currentRow;
+        private PivotRow3 currentRow;
 
         private SredstvaEditor sredstvaEditor;//sredstvaEditor, contactsEditor, personalsEditor,sostavEditor,combinedResourcesEditor,watersEditor,penasEditor,sizodsEditor,kostymsEditor
         private ContactsEditor contactsEditor;
@@ -44,11 +44,11 @@ namespace stroevkaI.Forms
         }
 
         // Заглушка для получения PivotRow по id (реализуйте при необходимости)
-        private PivotRow GetPivotRowById(int id)
+        private PivotRow3 GetPivotRowById(int id)
         {
             // Например, можно запросить из списка или из БД
             // Если не нужно, оставьте возврат null или нового объекта
-            return new PivotRow { PchId = id };
+            return new PivotRow3 { PchId = id };
         }
 
         protected override void Dispose(bool disposing)
@@ -227,7 +227,7 @@ namespace stroevkaI.Forms
                 InitializeEditors();
         }
 
-        public void RefreshEditors(PivotRow row)
+        public void RefreshEditors(PivotRow3 row)
         {
             currentRow = row;
             subdivisionId = row?.PchId ?? 0;
@@ -241,7 +241,7 @@ namespace stroevkaI.Forms
         public void RefreshEditors(int pchId)
         {
             subdivisionId = pchId;
-            currentRow = new PivotRow { PchId = pchId };
+            currentRow = new PivotRow3 { PchId = pchId };
             RefreshEditors(currentRow);
         }
     }

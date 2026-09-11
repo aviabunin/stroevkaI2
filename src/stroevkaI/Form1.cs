@@ -40,7 +40,7 @@ namespace stroevkaI
 
         public string rootPsgName = "";
         private FirePsgStat selectedItem = null;
-        private PivotRow selectedItem1 = null;
+        private PivotRow3 selectedItem1 = null;
         private List<Psg> allPsgs;
         private bool isLeftPanelVisible = false;
 
@@ -52,7 +52,7 @@ namespace stroevkaI
         private List<Psg> cachedPsgList;
         private BackgroundWorker compareAllWorker;
 
-        List<PivotRow> pivotSource;
+        List<PivotRow3> pivotSource;
         private ColumnVisibilityManager _columnManager;
 
         #endregion
@@ -71,8 +71,8 @@ namespace stroevkaI
             karaulTextBox.Text = "       Караул № " + караул;
 
             // Сразу пустой источник, чтобы грид был не null, а пустой
-            PivotRowGrid.DataSource = new List<PivotRow>();
-            EquipmentDataGridView.DataSource = new List<PivotRow>();
+            PivotRowGrid.DataSource = new List<PivotRow3>();
+            EquipmentDataGridView.DataSource = new List<PivotRow3>();
 
             // Подписки на события гридов
             EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
@@ -999,7 +999,7 @@ namespace stroevkaI
             var row = grid.Rows[e.RowIndex];
 
             // Проверяем, что строка привязана к объекту PivotRow
-            if (row.DataBoundItem is PivotRow pivotRow)
+            if (row.DataBoundItem is PivotRow3 pivotRow)
             {
                 // Получаем имя свойства, связанного с этой колонкой
                 var column = grid.Columns[e.ColumnIndex];
@@ -1106,7 +1106,7 @@ namespace stroevkaI
         {
             if (PivotRowGrid.CurrentRow != null)
             {
-                selectedItem1 = (PivotRow)PivotRowGrid.CurrentRow.DataBoundItem;
+                selectedItem1 = (PivotRow3)PivotRowGrid.CurrentRow.DataBoundItem;
                 if (selectedItem1 != null)
                 {
                     #region По двойному клику на ПСГ - выбрать его вместо ТПСГ
