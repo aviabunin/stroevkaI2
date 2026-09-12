@@ -478,10 +478,10 @@ namespace StorageI.ModelsStroevkaMySql
             context = new stroevkaContext();
             return context.Psgs.Where(c => c.Garnizon.Trim() == psgName).FirstOrDefault();
         }
-        public static FirePsgStat GetPsgByName2(string psgName)
+        public static Psg GetPsgByName2(string psgName)
         {
             context = new stroevkaContext();
-            return context.FirePsgStats.Where(c => c.Псг.Trim() == psgName).FirstOrDefault();
+            return context.Psgs.Where(c => c.Garnizon.Trim() == psgName).FirstOrDefault();
         }
         public static PsgTotalRow PsgByName(string psgName)
         {

@@ -35,7 +35,7 @@ namespace stroevkaI
         public static int караул = ((DateTime.Now.AddHours(-8).Date - karaul1date).Days) % 4 + 1;
         private static int lastKaraul = -1;
 
-        private FirePsgStat rootPsg = null;
+        private Psg rootPsg = null;
         private PsgTotalRow rootPsg1 = null;
 
         public string rootPsgName = "";
@@ -64,17 +64,14 @@ namespace stroevkaI
         {
             InitializeComponent();
 
-
             EquipmentDataGridView.AutoGenerateColumns = false;
             PivotRowGrid.AutoGenerateColumns = false;
 
             karaulTextBox.Text = "       Караул № " + караул;
 
-            // Сразу пустой источник, чтобы грид был не null, а пустой
             PivotRowGrid.DataSource = new List<PivotRow>();
             EquipmentDataGridView.DataSource = new List<PivotRow>();
 
-            // Подписки на события гридов
             EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
             EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
             EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
@@ -82,32 +79,23 @@ namespace stroevkaI
             EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
 
             _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
-
-            // Всё тяжёлое — в Form1_Load
-            this.Load += Form1_Load;
-            //this.EquipmentDataGridView.AutoGenerateColumns = false;
-            //this.PivotRowGrid.AutoGenerateColumns = false;
-
-            //karaulTextBox.Text = "       Караул № "+караул.ToString();
-
-            //// Подписываемся на события грида
-            //EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
-            //EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
-            //EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
-            //EquipmentDataGridView.DoubleClick += EquipmentDataGridView_DoubleClick;
-            //EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
-            //// Запускаем таймеры
-            //StartKaraulTimer();
-            //StartClockTimer();
-
-            //_columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
         }
 
         private async void Form1_Load(object sender, EventArgs e)
         {
+            var sw = Stopwatch.StartNew();
+            long last = 0;
+            void Mark(string stage)
+            {
+                var now = sw.ElapsedMilliseconds;
+                Debug.WriteLine($"[{now,6} ms] (+{now - last,5} ms) {stage}");
+                UpdateStatus($"{stage} ({now} ms)");
+                last = now;
+            }
+
             try
             {
-                UpdateStatus("Проверка доступности сервисов...");
+                Mark("Start");
 
                 _jsonService = new JsonDataService(
                     Path.Combine(AppContext.BaseDirectory, _config.JsonLocalPath));
@@ -116,35 +104,35 @@ namespace stroevkaI
                     _config.JsonNetworkPath,
                     _config.NetworkDrives);
                 _treeBuilder = new PivotTreeBuilder(context, _appStatus, _jsonService);
+                Mark("Services created");
 
-                await _appStatus.RefreshAsync(context);
-                UpdateStatus($"БД: {_appStatus.Status.DatabaseStatus} | Источник: {_appStatus.Status.ActiveSource}");
+                //await _appStatus.RefreshAsync(context);
+                //Mark($"AppStatus.RefreshAsync ? DB={_appStatus.Status.DatabaseStatus}");
 
-                // Строим список ПСГ — он нужен для cmbPsg
                 allPsgs = FireEquipsPivotRepository.LoadAllPsgs();
-                LoadPsgList();   // заполнит cmbPsg и НЕ вызовет SelectedIndexChanged,
-                                 // если мы временно отпишем обработчик
+                Mark($"LoadAllPsgs ({allPsgs.Count})");
 
-                // Восстанавливаем сохранённое имя ПСГ
                 rootPsgName = Settings.Default.rootGarn;
                 if (string.IsNullOrEmpty(rootPsgName)) rootPsgName = "Территориальный";
+                LoadPsgList();
+                Mark($"LoadPsgList (selected={rootPsgName})");
 
-                // Первый расчёт дерева — вот здесь реальная задержка
-                UpdateStatus($"Построение дерева для «{rootPsgName}»...");
                 await BuildTreeAsync(rootPsgName);
-                UpdateStatus("Готово");
+                Mark($"BuildTreeAsync({rootPsgName})");
 
-                // Таймеры
                 StartKaraulTimer();
                 StartClockTimer();
+                Mark("Timers started");
 
-                UpdateKaraul();
+                //UpdateKaraul();
+                //Mark("UpdateKaraul");
+
+                Mark("Done");
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка инициализации: {ex.Message}", "Ошибка",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
-                UpdateStatus("Ошибка инициализации");
             }
         }
         private async Task BuildTreeAsync(string psgName)
@@ -477,7 +465,7 @@ namespace stroevkaI
         {
             try
             {
-                if (rootPsg != null && rootPsg.Псг.Contains("Территориал"))
+                if (rootPsg != null && rootPsg.Garnizon.Contains("Территориал"))
                     cppsReport.myReport(EquipmentDataGridView);
                 else
                     psgReport.printLocal(rootPsgName, EquipmentDataGridView);
