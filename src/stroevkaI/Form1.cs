@@ -30,7 +30,6 @@ namespace stroevkaI
         private static string knownExcelFolder = Directory.GetCurrentDirectory() + @"\отчеты\";
         private string templatePath = knownExcelFolder + @"\шаблоны\";
 
-        private List<FirePsgStat> gridList;
         public static DateTime karaul1date = new DateTime(2018, 07, 31);
         public static int караул = ((DateTime.Now.AddHours(-8).Date - karaul1date).Days) % 4 + 1;
         private static int lastKaraul = -1;
@@ -64,19 +63,12 @@ namespace stroevkaI
         {
             InitializeComponent();
 
-            EquipmentDataGridView.AutoGenerateColumns = false;
             PivotRowGrid.AutoGenerateColumns = false;
 
             karaulTextBox.Text = "       Караул № " + караул;
 
             PivotRowGrid.DataSource = new List<PivotRow>();
-            EquipmentDataGridView.DataSource = new List<PivotRow>();
 
-            EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
-            EquipmentDataGridView.CurrentCellDirtyStateChanged += EquipmentDataGridView_CurrentCellDirtyStateChanged;
-            EquipmentDataGridView.CellPainting += EquipmentDataGridView_CellPainting_1;
-            EquipmentDataGridView.DoubleClick += EquipmentDataGridView_DoubleClick;
-            EquipmentDataGridView.CellFormatting += EquipmentDataGridView_CellFormatting;
 
             _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
         }
@@ -141,7 +133,7 @@ namespace stroevkaI
             PivotRowGrid.DataSource = rows;
 
             // При желании здесь же наполняем второй грид тем же списком
-            EquipmentDataGridView.DataSource = rows;
+            //EquipmentDataGridView.DataSource = rows// Убран
             HighlightDatafilledRows();
         }
 
@@ -217,11 +209,7 @@ namespace stroevkaI
         #endregion
 
         #region Процедуры работы с гридом
-        void InitGrid()
-        {
-            gridList = FireEquipsPivotRepository.LoadEquipsByPsg(rootPsgName);
-            EquipmentDataGridView.DataSource = gridList;
-        }
+
         void InitPivotGrid(string rootName)
         {
             var lst = PivotTreeBuilder.GetPsgChildes(rootName).OrderBy(c => c.Norder).ToList();
@@ -235,8 +223,7 @@ namespace stroevkaI
         {
             if (string.IsNullOrEmpty(psgName)) return;
 
-            gridList = FireEquipsPivotRepository.LoadEquipsByPsg(psgName);
-            EquipmentDataGridView.DataSource = gridList;
+
 
             PivotTreeBuilder.InvalidateCache(psgName);
             await InitPivotGridAsync(psgName);
@@ -310,154 +297,9 @@ namespace stroevkaI
         #endregion
 
         #region Обработка событий от грида
-        private void EquipmentDataGridView_CellPainting_1(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-            if (e.RowIndex == -1 && e.ColumnIndex >= 1)
-            {
-                e.Paint(e.ClipBounds, DataGridViewPaintParts.All & ~DataGridViewPaintParts.ContentForeground);
-
-                e.Graphics.TranslateTransform(e.CellBounds.Left, e.CellBounds.Bottom);
-                e.Graphics.RotateTransform(-90);
-
-                StringFormat format = new StringFormat
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-
-                Rectangle rect = new Rectangle(0, 0, e.CellBounds.Height, e.CellBounds.Width);
-                e.Graphics.DrawString(
-                    EquipmentDataGridView.Columns[e.ColumnIndex].HeaderText,
-                    e.CellStyle.Font,
-                    Brushes.Black,
-                    rect,
-                    format);
-
-                e.Graphics.ResetTransform();
-                e.Handled = true;
-            }
-        }
-
-        private void EquipmentDataGridView_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (EquipmentDataGridView.Columns[e.ColumnIndex].Name == "Datafilled")
-            {
-                if (e.Value != null)
-                {
-                    try
-                    {
-                        if (e.Value is string)
-                        {
-                            string strValue = (string)e.Value;
-                            e.Value = strValue == "1" || strValue.Equals("true", StringComparison.OrdinalIgnoreCase);
-                            e.FormattingApplied = true;
-                        }
-                        else if (e.Value is int)
-                        {
-                            e.Value = (int)e.Value == 1;
-                            e.FormattingApplied = true;
-                        }
-                        else if (e.Value is long)
-                        {
-                            e.Value = (long)e.Value == 1;
-                            e.FormattingApplied = true;
-                        }
-                        else if (e.Value is byte)
-                        {
-                            e.Value = (byte)e.Value == 1;
-                            e.FormattingApplied = true;
-                        }
-                    }
-                    catch
-                    {
-                        e.Value = false;
-                        e.FormattingApplied = true;
-                    }
-                }
-            }
-        }
-
-        private void EquipmentDataGridView_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-
-            var checkBoxCell = EquipmentDataGridView.Rows[e.RowIndex].Cells["Datafilled"] as DataGridViewCheckBoxCell;
-            if (checkBoxCell != null && checkBoxCell.Value != null)
-            {
-                try
-                {
-                    object value = checkBoxCell.Value;
-                    bool isChecked = false;
-
-                    if (value is bool)
-                    {
-                        isChecked = (bool)value;
-                    }
-                    else if (value is string)
-                    {
-                        string strValue = (string)value;
-                        isChecked = strValue == "1" || strValue.Equals("true", StringComparison.OrdinalIgnoreCase);
-                    }
-                    else
-                    {
-                        isChecked = Convert.ToBoolean(value);
-                    }
-
-                    if (isChecked)
-                    {
-                        EquipmentDataGridView.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.LightGreen;
-                        EquipmentDataGridView.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
-                    }
-                    else
-                    {
-                        EquipmentDataGridView.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.White;
-                        EquipmentDataGridView.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
-                    }
-                }
-                catch
-                {
-                    EquipmentDataGridView.Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.White;
-                    EquipmentDataGridView.Rows[e.RowIndex].DefaultCellStyle.ForeColor = Color.Black;
-                }
-            }
-        }
-
-        private void EquipmentDataGridView_CurrentCellDirtyStateChanged(object sender, EventArgs e)
-        {
-            if (EquipmentDataGridView.CurrentCell is DataGridViewCheckBoxCell)
-            {
-                EquipmentDataGridView.CommitEdit(DataGridViewDataErrorContexts.Commit);
-            }
-        }
-        string lastChoose = "";
-        private void EquipmentDataGridView_DoubleClick(object sender, EventArgs e)
-        {
-
-            if (EquipmentDataGridView.CurrentRow != null)
-            {
-                selectedItem = (FirePsgStat)EquipmentDataGridView.CurrentRow.DataBoundItem;
-                if (selectedItem != null)
-                {
-                    if (selectedItem.Isitog == 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
-                    {
-                        var str = selectedItem.Псг;
-                        if (cmbPsg.Items.Contains(str))
-                            //lastChoose = cmbPsg.Text;
-                            //if (str == cmbPsg.Text)
-                            //    str = "Территориальный"; // если клик на уже выбранном ПСГ то возврат к Территориальному
-                            cmbPsg.Text = str;
-                        return;
-                    }
+ 
 
 
-                    using (var editorForm = new EditorsForm((int)selectedItem.PchId))
-                    {
-                        editorForm.ShowDialog();
-                    }
-                    refreshGrid(rootPsgName);
-                }
-            }
-        }
         #endregion
 
         #region Обработка кнопок и инструментов
@@ -718,76 +560,8 @@ namespace stroevkaI
         }
         #endregion
 
-        #region Генератор представлений строёвки
-        string connectionString = @"server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set = utf8; Convert Zero Datetime=True; Allow Zero Datetime=True";
-        private void generator_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                // Генерируем SQL
-                string sql = ViewGenerator.GenerateAllViews();
 
-                // ОТЛАДКА: сохраняем SQL в файл для просмотра
-                System.IO.File.WriteAllText(@"C:\temp\generated_sql.txt", sql);
-                //MessageBox.Show($"SQL сохранен в C:\\temp\\generated_sql.txt\nДлина: {sql.Length} символов", "Отладка");
 
-                // Выполняем SQL по частям
-                using var connection = new MySqlConnection(connectionString);
-                connection.Open();
-
-                // Разбиваем на отдельные команды
-                var commands = sql.Split(new[] { "CREATE OR REPLACE" }, StringSplitOptions.RemoveEmptyEntries);
-
-                int commandIndex = 0;
-                foreach (var cmd in commands)
-                {
-                    commandIndex++;
-                    var fullCmd = "CREATE OR REPLACE " + cmd.Trim();
-
-                    // Пропускаем пустые команды
-                    if (string.IsNullOrWhiteSpace(fullCmd) || fullCmd == "CREATE OR REPLACE")
-                        continue;
-
-                    try
-                    {
-                        //string sss = fullCmd.Substring(0,3000);
-                        using var command = new MySqlCommand(fullCmd, connection);
-                        command.ExecuteNonQuery();
-                        Console.WriteLine($"? Команда {commandIndex} выполнена");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Ошибка в команде {commandIndex}:\n{ex.Message}\n\nSQL:\n{fullCmd.Substring(0, 120)}...",
-                            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        throw;
-                    }
-                }
-
-                MessageBox.Show("Все представления успешно созданы!", "Успех",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-        #endregion
-
-        private void pchsRefresh_Click(object sender, EventArgs e)
-        {
-            RowIdService serv = new RowIdService();
-            //serv.UpdateAllPchRowIds();
-            serv.UpdateAllRowIds();
-//            serv.UpdateAllPsgRowIds();
-            MessageBox.Show("pch/psg rowId обновлены");
-        }
-        
-
-        private void toolStripRight_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
-        {
-
-        }
         private void compareAllPsg() {
 
             if (compareAllWorker != null && compareAllWorker.IsBusy)
