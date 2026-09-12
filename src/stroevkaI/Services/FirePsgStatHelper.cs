@@ -33,7 +33,7 @@ public static class FirePsgStatHelper
     /// <param name="record">Экземпляр FirePsgStat</param>
     /// <param name="columnIndex">Индекс колонки, начиная с 0</param>
     /// <returns>Значение в виде строки, для null – пустая строка</returns>
-    public static string GetColumnValue(FirePsgStat record, int columnIndex)
+    public static string GetColumnValue(PivotRow record, int columnIndex)
     {
         if (record == null)
             throw new ArgumentNullException(nameof(record));
@@ -42,7 +42,7 @@ public static class FirePsgStatHelper
             throw new ArgumentOutOfRangeException(nameof(columnIndex), $"Индекс должен быть от 0 до {ColumnOrder.Count - 1}");
 
         string propertyName = ColumnOrder[columnIndex];
-        PropertyInfo prop = typeof(FirePsgStat).GetProperty(propertyName);
+        PropertyInfo prop = typeof(PivotRow).GetProperty(propertyName);
 
         if (prop == null)
             return string.Empty; // свойство не найдено (на всякий случай)

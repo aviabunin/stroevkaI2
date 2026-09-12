@@ -15,7 +15,7 @@ namespace stroevkaI.Services
     public  class bdService
     {
         static List<Psgdatum> psgdataList = new List<Psgdatum>();  //текущее состояние psgdata
-        static List<FirePsgStat> fpsList = new List<FirePsgStat>();  //текущее состояние psgdata
+        //static List<PivotRow> fpsList = new List<PivotRow>();  //текущее состояние psgdata
         static List<StroevkaExcelRow> psgReportList = new List<StroevkaExcelRow>();  //список строк отчёта в старой проге
 
         static DataGridView _grid;

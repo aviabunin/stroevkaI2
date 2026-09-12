@@ -61,7 +61,7 @@ class cppsReport
 
     #endregion
 
-    static List<FirePsgStat> reportData; // Список строк отчёта ЦППС с номерами строк в шаблоне Excel 
+    static List<PivotRow> reportData; // Список строк отчёта ЦППС с номерами строк в шаблоне Excel 
     
     // шаблон можно посмотреть предварительно
              // а затем при входе в программу посмотреть список - и как формируется каждая строка
@@ -76,7 +76,7 @@ class cppsReport
     /// <param name="_reportData"></param>
 
 
-    static public void ModifyDataRange(List<FirePsgStat> _reportData)
+    static public void ModifyDataRange(List<PivotRow> _reportData)
     {
         reportData = _reportData;
         DateTime date = DateTime.Now;
@@ -89,7 +89,7 @@ class cppsReport
             int cnt = 0;
             List<string> lst = new List<string>();
             // цикл формирования строк в окончательном отчёте
-            foreach (FirePsgStat row in reportData)
+            foreach (PivotRow row in reportData)
             {
                 string rowName = row.Пч.Trim();
                 if (!rowNumbers.ContainsKey(rowName.Trim()))
@@ -127,7 +127,7 @@ class cppsReport
     /// <param name="sheet"> строка excel</param>
     /// <param name="psgdata_row">строка из переданного списка грида</param>
     /// <param name="iRow">номер строки в Excel</param>
-    static private void formPSGitogRow(IXLWorksheet sheet, FirePsgStat psgdata_row, int iRow) //перенос строки из таблицы в excel
+    static private void formPSGitogRow(IXLWorksheet sheet, PivotRow psgdata_row, int iRow) //перенос строки из таблицы в excel
     {
 
         for (int col = 2; col <= 68; col++)             //колонки , начиная с АЦ по начкар
@@ -182,7 +182,7 @@ class cppsReport
 
             //int rowIndex = 0;
             var sheet = workbook.Worksheet(1);
-            FirePsgStat psgdata_row2;
+            PivotRow psgdata_row2;
             //foreach (var pair in Garn)
             //{
             //rowIndex = pair.Value;

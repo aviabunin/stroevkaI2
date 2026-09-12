@@ -38,7 +38,6 @@ namespace stroevkaI
         private PsgTotalRow rootPsg1 = null;
 
         public string rootPsgName = "";
-        private FirePsgStat selectedItem = null;
         private PivotRow selectedItem1 = null;
         private List<Psg> allPsgs;
         private bool isLeftPanelVisible = false;
