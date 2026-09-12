@@ -53,16 +53,7 @@ namespace StorageI.ModelsStroevkaMySql
 
             return allPsg;
         }
-        public static List<FirePsgStat> loadAllFps(string psgName)
-        {
-            FirePsgStat rootFps = context.FirePsgStats.Where(C=>C.Пч.Trim() == psgName).FirstOrDefault();
-            if (rootFps == null) return null;
-            List<FirePsgStat> allFps = context.FirePsgStats.Where(c => c.Parent == rootFps.Parent).ToList();
-            allFps = allFps.Where(c => !(c.Пч.Contains("ВПО") && (c.Isitog==1) )).ToList();
-            allFps = allFps.Where(c => !(c.Пч.Contains("АСФ") && (c.Isitog == 1))).OrderBy(c=>c.Norder).ToList();
-            //allFps.Add(rootFps);// т.к. у root parent = 3
-            return allFps;
-        }
+
         /// <summary>
         /// обновление CacheNachkars: для каждого гарнизона делаем Update - если есть то обновляем, если нет, то создаём новый
         /// </summary>
@@ -83,62 +74,61 @@ namespace StorageI.ModelsStroevkaMySql
         // save контекста
         public static void UpdateCacheNachkar(int karaulNumber)
         {
-            context = new stroevkaContext();
-            string fioNachKar="";
-            List<FirePsgStat> lst = context.FirePsgStats.ToList();
-            try
-            {
-                foreach (FirePsgStat fps in lst) {
+            //context = new stroevkaContext();   //TODO потом сделаем
+            //string fioNachKar="";
+            //List<FirePsgStat> lst = context.FirePsgStats.ToList();
+            //try
+            //{
+            //    foreach (FirePsgStat fps in lst) {
 
-   
-                    //if (fps.PchId != 6000)
-                    //    continue;
 
-                    if (fps.Isitog == 1)
-                        fioNachKar = начкарИтоговаяСтрока(fps, context, karaulNumber);// там формируем cashNachkar
-                    else
-                        fioNachKar = начкарПЧ(fps, context, karaulNumber);
-                    updateNachcar(context, (int)fps.PchId,karaulNumber,fioNachKar,(int)fps.Parent);
+            //        if (fps.Isitog == 1)
+            //            fioNachKar = начкарИтоговаяСтрока(fps, context, karaulNumber);// там формируем cashNachkar
+            //        else
+            //            fioNachKar = начкарПЧ(fps, context, karaulNumber);
+            //        updateNachcar(context, (int)fps.PchId,karaulNumber,fioNachKar,(int)fps.Parent);
          
-                }
-                context.SaveChanges();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Ошибка обновления cache_nachkar: {ex.Message}");
-            }
+            //    }
+            //    context.SaveChanges();
+            //}
+            //catch (Exception ex)
+            //{
+            //    System.Diagnostics.Debug.WriteLine($"Ошибка обновления cache_nachkar: {ex.Message}");
+            //}
         }
-        private static string начкарИтоговаяСтрока(FirePsgStat fps, stroevkaContext context,int karaul) {
+        private static string начкарИтоговаяСтрока(Psg fps, stroevkaContext context,int karaul) {
 
-            if(!fps.Category.StartsWith("Общие"))
-                return "";
+            return "Надо сделать";
+            //if(!fps.Category.StartsWith("Общие"))//TODO сделать
+            //    return "";
 
-             var psg = context.Psgs.Where(c => c.Garnizon.StartsWith(fps.Псг.Substring(0, 5))).FirstOrDefault();// ищем гарнизон по 5 первым буквам
+            // var psg = context.Psgs.Where(c => c.Garnizon.StartsWith(fps.Псг.Substring(0, 5))).FirstOrDefault();// ищем гарнизон по 5 первым буквам
 
-            if (psg == null)
-                return "-";
+            //if (psg == null)
+            //    return "-";
 
-            int mainPchId = (int)psg.MainPchId;   // Найти основную ПЧ и взять начкар оттуда
+            //int mainPchId = (int)psg.MainPchId;   // Найти основную ПЧ и взять начкар оттуда
 
-            var cont = context.Contacts.Where(c => ((c.SubdivisionId == mainPchId) && (c.Karaul ==karaul ))).FirstOrDefault();
-            if ((cont == null) || (cont.Fio.Trim().ToLower()=="нет"))
-                return "Не указан";
-            string a = cont.Fio != null ? cont.Fio : "";
-            return a;  // dВозможно завести поле, чтобы оператор сам формировал нужное сокращение
+            //var cont = context.Contacts.Where(c => ((c.SubdivisionId == mainPchId) && (c.Karaul ==karaul ))).FirstOrDefault();
+            //if ((cont == null) || (cont.Fio.Trim().ToLower()=="нет"))
+            //    return "Не указан";
+            //string a = cont.Fio != null ? cont.Fio : "";
+            //return a;  // dВозможно завести поле, чтобы оператор сам формировал нужное сокращение
         }
-        private static string начкарПЧ(FirePsgStat it, stroevkaContext context, int karaul)
+        private static string начкарПЧ(Pch it, stroevkaContext context, int karaul)
         {
-            List<Contact> contacts = context.Contacts.Where(c => ((c.SubdivisionId == it.PchId) && (c.Karaul == karaul))).ToList();
-            if ((contacts == null) || (contacts.Count<=0))
-                return "";
-            //Если есть начкар (post_id = 1) - то возврат его , иначе если есть ДПО (post_id = 5) то его, иначе "нет"
-            var cont = contacts.Where(c => c.PostId == 1).FirstOrDefault();
-            if((cont!=null) && cont.Fio.Trim() !="" && cont.Fio.Trim() != "нет")
-                    return cont.Fio.Trim();
-            cont = contacts.Where(c => c.PostId == 5).FirstOrDefault();
-            if ((cont != null) && cont.Fio.Trim() != "" && cont.Fio.Trim() != "нет")
-                return cont.Fio.Trim();
-            return "Не указан"; 
+            //List<Contact> contacts = context.Contacts.Where(c => ((c.SubdivisionId == it.PchId) && (c.Karaul == karaul))).ToList();
+            //if ((contacts == null) || (contacts.Count<=0))
+            //    return "";
+            ////Если есть начкар (post_id = 1) - то возврат его , иначе если есть ДПО (post_id = 5) то его, иначе "нет"
+            //var cont = contacts.Where(c => c.PostId == 1).FirstOrDefault();
+            //if((cont!=null) && cont.Fio.Trim() !="" && cont.Fio.Trim() != "нет")
+            //        return cont.Fio.Trim();
+            //cont = contacts.Where(c => c.PostId == 5).FirstOrDefault();
+            //if ((cont != null) && cont.Fio.Trim() != "" && cont.Fio.Trim() != "нет")
+            //    return cont.Fio.Trim();
+            //return "Не указан";
+            return "Надо сделать";
 
         }
        
@@ -192,9 +182,9 @@ namespace StorageI.ModelsStroevkaMySql
 
         public static void SetPchDatafilled(int pchId, bool isFilled)
         {
-            using (var context = new stroevkaContext())
+            using (var context = new stroevkaContext())  //TODO доделать
             {
-                var pch = context.FirePsgStats.FirstOrDefault(p => p.PchId == pchId);
+                var pch = context.Pchs.FirstOrDefault(p => p.Id == pchId);// FirePsgStats.FirstOrDefault(p => p.PchId == pchId);
                 if (pch != null)
                 {
                     //pch.Datafilled = isFilled ? 1 : 0;
@@ -288,11 +278,12 @@ namespace StorageI.ModelsStroevkaMySql
         /// <summary>
         /// Получение ПЧ по ID
         /// </summary>
-        public static FirePsgStat getPchById(int subdivisionId)
+        public static Pch getPchById(int subdivisionId)
         {
             context = new stroevkaContext();
-            return context.FirePsgStats
-                .FirstOrDefault(p => p.PchId == subdivisionId);
+            return context.Pchs.FirstOrDefault(p => p.Id == subdivisionId);
+            //return context.FirePsgStats
+            //    .FirstOrDefault(p => p.PchId == subdivisionId);
         }
 
         /// <summary>
@@ -384,16 +375,7 @@ namespace StorageI.ModelsStroevkaMySql
         }
 
 
-
-        public static List<FirePsgStat> LoadEquips()
-        {
-            context = new stroevkaContext();
-            var v = context.FirePsgStats.ToList();
-            return v;// context.FireEquipsPivots.ToList();
-        }
-
-        // главное пользуйся автоподсказкой - набрал точку и она покажет и Contacts,
-        //  и SubdivisionId  и c.Karaul
+ 
         /// <summary>
         /// Возвращает список из таблицы Contacts
         /// обращение из вызывающей программы  FireEquipsPivotRepository.GetContacts(id,karaul)
@@ -426,51 +408,6 @@ namespace StorageI.ModelsStroevkaMySql
 
 
 
-        public static List<FirePsgStat> LoadEquipsByPsg(string _psgname)
-        {
-            List<FirePsgStat> lst = new List<FirePsgStat>();
-
-            if (!_psgname.Contains("Террит"))
-            {
-                // Для районных ПСГ
-                Psg psg = context.Psgs.Where(c => c.Garnizon == _psgname).FirstOrDefault();
-                if (psg == null) return lst;
-
-                var stats = context.FirePsgStats
-                    .Where(c => c.Parent == psg.Id)
-                    .ToList();
-
-                lst = stats
-                    .OrderBy(c => c.Category == "всего" ? 0 : 1)
-                    .ThenBy(c => c.Category == "всего" ? psg.Norder : c.Norder)
-                    .ThenBy(c => c.Norder)
-                    .ToList();
-
-                return lst;
-            }
-            else
-            {
-                // Для территориального
-                var allStats = context.FirePsgStats
-                    .Where(c => (c.PchId == 11 || c.Parent == 11 || c.Category.ToLower().Contains("всего")))
-                    .ToList();
-
-                // Словарь для сортировки ПСГ по их Norder
-                var psgOrder = context.Psgs
-                    .Where(p => p.Parent == 11)
-                    .ToDictionary(p => p.Garnizon, p => p.Norder);
-
-                // Сортируем: сначала территориальный итог (по своему Norder),
-                // затем остальные "всего" по порядку ПСГ, потом остальные строки
-                lst = allStats
-                    .OrderBy(c => c.Псг == "Территориальный" ? 0 : 1)
-                    .ThenBy(c => c.Category == "всего" ? (psgOrder.ContainsKey(c.Псг) ? psgOrder[c.Псг] : 999) : 999)
-                    .ThenBy(c => c.Norder)
-                    .ToList();
-
-                return lst;
-            }
-        }
 
 
         public static Psg GetPsgByName(string psgName)//TODO

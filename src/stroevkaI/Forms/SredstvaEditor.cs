@@ -15,7 +15,7 @@ namespace stroevkaI.Forms
         private List<Sredstva> displayData;
         private bool isEdit = false;
         private int subdivisionId;
-        private FirePsgStat currentPch;
+        private Pch currentPch;
 
         private Sredstva selectedItem;
         private string selectedState;
@@ -350,7 +350,7 @@ namespace stroevkaI.Forms
             {
                 if (currentPch != null)
                 {
-                    subdivisionId = (int)currentPch.PchId;
+                    subdivisionId = (int)currentPch.Id;
                 }
                 else
                 {

@@ -127,9 +127,7 @@ namespace stroevkaI.Forms
             var baseDate = new DateTime(2018, 07, 31);
             int currentKaraul = ((DateTime.Now.AddHours(-8).Date - baseDate).Days) % 4 + 1;
 
-            // Если ContactsEditor требует FirePsgStat, создаём фиктивный объект
-            var fakePch = new FirePsgStat { PchId = pchId, Пч = currentRow?.Пч };
-            contactsEditor = new ContactsEditor(fakePch, currentKaraul) { Dock = DockStyle.Fill };
+            contactsEditor = new ContactsEditor(pchId, currentKaraul) { Dock = DockStyle.Fill };
 
             contactsEditor.DataChanged += (s, e) => this.Text = currentRow?.Пч + " (контакты изменены)";
             contactsEditor.SaveRequested += (s, e) => this.Text = currentRow?.Пч + " (сохранено)";

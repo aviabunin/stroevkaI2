@@ -53,7 +53,7 @@ namespace stroevkaI.Forms
             var pch = FireEquipsPivotRepository.getPchById(_subdivisionId);
             if (pch != null)
             {
-                _subdivisionName = pch.Пч;
+                _subdivisionName = pch.Name;
             }
             else
             {

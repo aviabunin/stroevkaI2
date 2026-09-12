@@ -30,15 +30,16 @@ namespace stroevkaI.Forms
         public event EventHandler SaveRequested;
         public event EventHandler CancelRequested;
 
-        public ContactsEditor(FirePsgStat pch, int karaul)
+        public ContactsEditor(int pchId, int karaul)
         {
             InitializeComponent();
             _repository = new ContactRepository();
 
-            _currentPchId = pch?.PchId.HasValue == true ? (int)pch.PchId.Value : 0;
+            _currentPchId = (int)pchId;//   PchId.HasValue == true ? (int)pch.PchId.Value : 0;
             _currentSubdivisionId = _currentPchId;
-            _currentSubdivisionName = pch?.Пч ?? "";
-            _currentGarnizonName = pch?.Псг ?? "";
+            var pch = FireEquipsPivotRepository.getPchById(_currentPchId);
+            _currentSubdivisionName = pch.Name;// ?? "";
+            _currentGarnizonName = pch.Garnizon ;
             _currentKaraul = karaul;
 
             SetupDataGridViews();

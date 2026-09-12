@@ -9,7 +9,7 @@ namespace stroevkaI.Forms
     public partial class EditorsForm : Form
     {
         private int subdivisionId;
-        private FirePsgStat currentPch;
+        private Pch currentPch;
         private SredstvaEditor sredstvaEditor;
         private ContactsEditor contactsEditor;
         private PersonalsEditor personalsEditor;
@@ -70,7 +70,7 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id;// PchId.HasValue ? (int)currentPch.PchId.Value : 0;
 
             // Создаём вкладку "Ресурсы"
             TabPage tabResources = null;
@@ -131,16 +131,16 @@ namespace stroevkaI.Forms
 
             // Подписываемся на события сохранения
             watersEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (вода сохранена)";
+                this.Text = currentPch?.Name + " (вода сохранена)";
             };
             penasEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (пена сохранена)";
+                this.Text = currentPch?.Name + " (пена сохранена)";
             };
             sizodsEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (СИЗОД сохранён)";
+                this.Text = currentPch?.Name + " (СИЗОД сохранён)";
             };
             kostymsEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (костюмы сохранены)";
+                this.Text = currentPch?.Name + " (костюмы сохранены)";
             };
         }
 
@@ -148,17 +148,17 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id;// PchId.HasValue ? (int)currentPch.PchId.Value : 0;
 
             combinedResourcesEditor = new CombinedResourcesEditor(pchId);
             combinedResourcesEditor.Dock = DockStyle.Fill;
 
             combinedResourcesEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (ресурсы изменены)";
+                this.Text = currentPch?.Name + " (ресурсы изменены)";
             };
 
             combinedResourcesEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (ресурсы сохранены)";
+                this.Text = currentPch?.Name + " (ресурсы сохранены)";
             };
 
             // Добавляем на вкладку "Ресурсы"
@@ -179,15 +179,15 @@ namespace stroevkaI.Forms
             var baseDate = new DateTime(2018, 07, 31);
             int currentKaraul = ((DateTime.Now.AddHours(-8).Date - baseDate).Days) % 4 + 1;
 
-            contactsEditor = new ContactsEditor(currentPch, currentKaraul);
+            contactsEditor = new ContactsEditor((int)currentPch.Id, currentKaraul);
             contactsEditor.Dock = DockStyle.Fill;
 
             contactsEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (контакты изменены)";
+                this.Text = currentPch?.Name + " (контакты изменены)";
             };
 
             contactsEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (сохранено)";
+                this.Text = currentPch?.Name + " (сохранено)";
             };
 
             foreach (TabPage tab in tabControl1.TabPages)
@@ -205,7 +205,7 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null)
                 return;// сделать исключение
-            sredstvaEditor = new SredstvaEditor((int)currentPch.PchId);
+            sredstvaEditor = new SredstvaEditor((int)currentPch.Id);
  
 
             sredstvaEditor.Dock = DockStyle.Fill;
@@ -221,7 +221,7 @@ namespace stroevkaI.Forms
             }
 
             sredstvaEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (изменено)";
+                this.Text = currentPch?.Name + " (изменено)";
             };
         }
 
@@ -230,7 +230,7 @@ namespace stroevkaI.Forms
             if (currentPch == null) return;
 
             personalsEditor = new PersonalsEditor(
-                currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0
+                currentPch.Id   // PchId.HasValue ? (int)currentPch.PchId.Value : 0
             );
             personalsEditor.Dock = DockStyle.Fill;
 
@@ -250,17 +250,17 @@ namespace stroevkaI.Forms
             if (currentPch == null) return;
             if (_sostavRepository == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id;// PchId.HasValue ? (int)currentPch.PchId.Value : 0;
 
             sostavEditor = new SostavEditor(pchId);
             sostavEditor.Dock = DockStyle.Fill;
 
             sostavEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (состав изменён)";
+                this.Text = currentPch?.Name + " (состав изменён)";
             };
 
             sostavEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (состав сохранён)";
+                this.Text = currentPch?.Name + " (состав сохранён)";
             };
 
             foreach (TabPage tab in tabControl1.TabPages)
@@ -278,18 +278,18 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id;// PchId.HasValue ? (int)currentPch.PchId.Value : 0;
 
             // Создаём редактор для воды
             watersEditor = new WatersEditor(pchId);
             watersEditor.Dock = DockStyle.Fill;
 
             watersEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (вода изменена)";
+                this.Text = currentPch?.Name + " (вода изменена)";
             };
 
             watersEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (вода сохранена)";
+                this.Text = currentPch?.Name + " (вода сохранена)";
             };
 
             foreach (TabPage tab in tabControl1.TabPages)
@@ -307,17 +307,17 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id; //PchId.HasValue ? (int)currentPch.PchId.Value : 0;
 
             penasEditor = new PenasEditor(pchId);
             penasEditor.Dock = DockStyle.Fill;
 
             penasEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (пена изменена)";
+                this.Text = currentPch?.Name + " (пена изменена)";
             };
 
             penasEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (пена сохранена)";
+                this.Text = currentPch?.Name + " (пена сохранена)";
             };
 
             foreach (TabPage tab in tabControl1.TabPages)
@@ -335,17 +335,17 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id;
 
             sizodsEditor = new SizodsEditor(pchId);
             sizodsEditor.Dock = DockStyle.Fill;
 
             sizodsEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (СИЗОД изменён)";
+                this.Text = currentPch?.Name + " (СИЗОД изменён)";
             };
 
             sizodsEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (СИЗОД сохранён)";
+                this.Text = currentPch?.Name + " (СИЗОД сохранён)";
             };
 
             foreach (TabPage tab in tabControl1.TabPages)
@@ -363,17 +363,17 @@ namespace stroevkaI.Forms
         {
             if (currentPch == null) return;
 
-            int pchId = currentPch.PchId.HasValue ? (int)currentPch.PchId.Value : 0;
+            int pchId = currentPch.Id;
 
             kostymsEditor = new KostymsEditor(pchId);
             kostymsEditor.Dock = DockStyle.Fill;
 
             kostymsEditor.DataChanged += (s, e) => {
-                this.Text = currentPch?.Пч + " (костюмы изменены)";
+                this.Text = currentPch?.Name + " (костюмы изменены)";
             };
 
             kostymsEditor.SaveRequested += (s, e) => {
-                this.Text = currentPch?.Пч + " (костюмы сохранены)";
+                this.Text = currentPch?.Name + " (костюмы сохранены)";
             };
 
             foreach (TabPage tab in tabControl1.TabPages)
@@ -396,13 +396,17 @@ namespace stroevkaI.Forms
         }
 
         // Обновляем RefreshEditors
-        public void RefreshEditors(FirePsgStat pch)
+        public void RefreshEditors(int pchId)
         {
+   
+            var pch = FireEquipsPivotRepository.getPchById(pchId);
             currentPch = pch;
-            if (pch != null && pch.PchId.HasValue)
-            {
-                subdivisionId = (int)pch.PchId.Value;
-            }
+            subdivisionId = pchId;
+
+            //if (pch != null && pch.PchId.HasValue)
+            //{
+            //    subdivisionId = (int)pch.currentPch.Id;
+            //}
 
             sostavEditor?.LoadData();
             watersEditor?.LoadData();
@@ -411,14 +415,6 @@ namespace stroevkaI.Forms
             kostymsEditor?.LoadData();
         }
 
-        public void RefreshEditors(int pchId)
-        {
-            subdivisionId = pchId;
-            var pch = FireEquipsPivotRepository.getPchById(pchId);
-            if (pch != null)
-            {
-                RefreshEditors(pch);
-            }
-        }
+
     }
 }

@@ -41,7 +41,7 @@ namespace stroevkaI.Forms
             _subdivisionId = subdivisionId;
 
             var pch = FireEquipsPivotRepository.getPchById(_subdivisionId);
-            _subdivisionName = pch?.Пч ?? $"ПЧ {_subdivisionId}";
+            _subdivisionName = pch?.Name ?? $"ПЧ {_subdivisionId}";
 
             LoadAllData();
         }

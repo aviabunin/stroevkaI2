@@ -9,12 +9,11 @@ namespace stroevkaI
     public class ColumnVisibilityManager
     {
         private readonly DataGridView _grid1; // PivotRowGrid
-        private readonly DataGridView _grid2; // EquipmentDataGridView
 
-        public ColumnVisibilityManager(DataGridView grid1, DataGridView grid2)
+
+        public ColumnVisibilityManager(DataGridView grid1)
         {
             _grid1 = grid1;
-            _grid2 = grid2;
         }
 
         // Применить список видимых колонок
@@ -25,7 +24,6 @@ namespace stroevkaI
                 visibleColumns.Insert(0, "ПЧ");
 
             ApplyToGrid(_grid1, visibleColumns);
-            ApplyToGrid(_grid2, visibleColumns);
         }
 
         private void ApplyToGrid(DataGridView grid, List<string> visibleColumns)

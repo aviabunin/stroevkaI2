@@ -70,7 +70,7 @@ namespace stroevkaI
             PivotRowGrid.DataSource = new List<PivotRow>();
 
 
-            _columnManager = new ColumnVisibilityManager(PivotRowGrid, EquipmentDataGridView);
+            _columnManager = new ColumnVisibilityManager(PivotRowGrid);
         }
 
         private async void Form1_Load(object sender, EventArgs e)
@@ -132,8 +132,6 @@ namespace stroevkaI
             var rows = await _treeBuilder.GeneratePivotRowsAsync(psgName, forceReload: true);
             PivotRowGrid.DataSource = rows;
 
-            // При желании здесь же наполняем второй грид тем же списком
-            //EquipmentDataGridView.DataSource = rows// Убран
             HighlightDatafilledRows();
         }
 
@@ -240,7 +238,7 @@ namespace stroevkaI
 
         private void HighlightDatafilledRows()
         {
-            foreach (DataGridViewRow row in EquipmentDataGridView.Rows)
+            foreach (DataGridViewRow row in PivotRowGrid.Rows)
             {
                 if (row.Cells["Datafilled"]?.Value != null)
                 {
@@ -308,9 +306,9 @@ namespace stroevkaI
             try
             {
                 if (rootPsg != null && rootPsg.Garnizon.Contains("Территориал"))
-                    cppsReport.myReport(EquipmentDataGridView);
+                    cppsReport.myReport(PivotRowGrid);
                 else
-                    psgReport.printLocal(rootPsgName, EquipmentDataGridView);
+                    psgReport.printLocal(rootPsgName, PivotRowGrid);
 
                 UpdateStatus("Печать выполнена");
             }
@@ -395,7 +393,7 @@ namespace stroevkaI
             {
                 UpdateStatus("Выполняется сравнение с БД...");
                 string psgName = cmbPsg.Text.Trim();
-                rezStr = bdService.psgdataCompare(psgName, EquipmentDataGridView);
+                rezStr = bdService.psgdataCompare(psgName, PivotRowGrid);
 
                 MessageBox.Show(rezStr, "Информация",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -660,24 +658,16 @@ namespace stroevkaI
 
             // Читаем Excel
             var reader = new ExcelReaderService(cachedPchList, cachedPsgList);
-            var excelData = reader.ReadExcelFile(excelFilePath, psg, EquipmentDataGridView.Rows.Count);
+            var excelData = reader.ReadExcelFile(excelFilePath, psg, PivotRowGrid.Rows.Count);
 
             // Сравниваем с гридом
-            var comparer = new GridComparer(EquipmentDataGridView);
+            var comparer = new GridComparer(PivotRowGrid);
             var results = comparer.CompareAll(excelData);
 
             return results;
         }
 
-        private void statusStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
-        {
 
-        }
-
-        private void EquipmentDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
 
         private string BuildTooltipText(List<DetailItem> details, string columnName)
         {
@@ -868,63 +858,3 @@ namespace stroevkaI
         }
     }
 }
-//{
-//    // Принудительно обновляем караул при загрузке
-//        UpdateKaraul();
-
-//    string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
-//    jsonService = new JsonDataService(baseDir); // сетевой путь
-//    cachedPchList = FireEquipsPivotRepository.getPchList();
-//    cachedPsgList = FireEquipsPivotRepository.getPsgList();
-//    statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
-//    await BuildTreeAsync();
-
-//    // Формируем список ПСГ (Загружаем список ПСГ)
-//    LoadPsgList();
-
-//    // Инициализируем rootPsgName из Settings
-//    rootPsgName = Settings.Default.rootGarn;
-//    if (string.IsNullOrEmpty(rootPsgName))
-//    {
-//        rootPsgName = "Территориальный";
-//        Settings.Default.rootGarn = rootPsgName;
-//        Settings.Default.Save();
-//    }
-
-//    // Устанавливаем выбранный ПСГ в комбобоксе
-//    if (!string.IsNullOrEmpty(rootPsgName))
-//    {
-//        int index = cmbPsg.FindStringExact(rootPsgName);
-//        if (index >= 0)
-//        {
-//            cmbPsg.SelectedIndex = index;
-//        }
-//        else
-//        {
-//            // Если не найден, выбираем территориальный
-//            int territorialIndex = cmbPsg.FindStringExact("Территориальный");
-//            if (territorialIndex >= 0)
-//            {
-//                cmbPsg.SelectedIndex = territorialIndex;
-//                rootPsgName = "Территориальный";
-//                Settings.Default.rootGarn = rootPsgName;
-//                Settings.Default.Save();
-//            }
-//        }
-//    }
-
-//    // Загружаем корневой гарнизон
-//    rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
-//    EquipmentDataGridView.AutoGenerateColumns = false;
-
-//    //Загрузка данных - из json 
-//    // Пока для районного ПСГ Костомукши - и сравним
-//    //LoadDataForPsg(rootPsg); пока перенесём это  в инициализацию редактора
-
-
-
-//    InitGrid();
-
-//    InitPivotGrid(rootPsgName);
-
-//}
