@@ -15,7 +15,7 @@ namespace stroevkaI.Services
     public class PivotTreeBuilder
     {
         // ---------- КЭШ ----------
-        private static readonly ConcurrentDictionary<string, List<PivotRow3>> _pivotCache = new();
+        private static readonly ConcurrentDictionary<string, List<PivotRow>> _pivotCache = new();
         private static readonly ConcurrentDictionary<string, DateTime> _cacheTime = new();
 
         // ---------- СОСТОЯНИЕ ----------
@@ -336,7 +336,7 @@ namespace stroevkaI.Services
         // загрузки всех данных — она уже сделана в BuildTreeAsync)
         // ==========================================================
 
-        public async Task<List<PivotRow3>> GeneratePivotRowsAsync(string psgName, bool forceReload = false)
+        public async Task<List<PivotRow>> GeneratePivotRowsAsync(string psgName, bool forceReload = false)
         {
             if (!forceReload && _pivotCache.TryGetValue(psgName, out var cached))
                 return cached;
@@ -344,13 +344,13 @@ namespace stroevkaI.Services
             var rootNode = await BuildTreeAsync(psgName);
             if (rootNode == null)
             {
-                var empty = new List<PivotRow3>();
+                var empty = new List<PivotRow>();
                 _pivotCache[psgName] = empty;
                 return empty;
             }
 
             InitializeColumnConfigs();
-            var result = new List<PivotRow3>();
+            var result = new List<PivotRow>();
 
             // 1. Листья
             var leaves = GetAllLeaves(rootNode);
@@ -370,7 +370,7 @@ namespace stroevkaI.Services
                 ? rootNode.Children.Where(c => c.Children.Any()).ToList()
                 : new List<ReportNode> { rootNode };
 
-            var allPsgRows = new List<PivotRow3>();
+            var allPsgRows = new List<PivotRow>();
             foreach (var psgNode in psgNodes)
             {
                 var psgRows = ComputePsgSummaryRows(psgNode);
@@ -384,7 +384,7 @@ namespace stroevkaI.Services
             // 3. Территориальные итоги — только когда корень территориальный
             if (isTerritorial)
             {
-                var territorialRows = new List<PivotRow3>();
+                var territorialRows = new List<PivotRow>();
 
                 foreach (var cat in new[] { "ВПО", "ЧПО", "другие", "АСФ" })
                 {
@@ -437,23 +437,23 @@ namespace stroevkaI.Services
         // ==========================================================
         // Вспомогательные
         // ==========================================================
-        public static List<PivotRow3> GetPsgChildes(string psgName)
+        public static List<PivotRow> GetPsgChildes(string psgName)
         {
             if (_pivotCache.TryGetValue(psgName, out var rows))
             {
-                var psgRow = rows.FirstOrDefault(c => c.ПСГ != null
-                    && c.ПСГ.Contains(psgName)
+                var psgRow = rows.FirstOrDefault(c => c.Псг != null
+                    && c.Псг.Contains(psgName)
                     && c.Category != null
                     && c.Category.Contains("всего"));
-                if (psgRow == null) return new List<PivotRow3>();
+                if (psgRow == null) return new List<PivotRow>();
 
-                var lst = new List<PivotRow3> { psgRow };
+                var lst = new List<PivotRow> { psgRow };
                 lst.AddRange(psgRow.Childes);
                 return lst.OrderBy(c => c.Norder).ToList();
             }
-            return new List<PivotRow3>();
+            return new List<PivotRow>();
         }
-        private PivotRow3 CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow3> rowsToSum)
+        private PivotRow CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow> rowsToSum)
         {
             Dictionary<string, string> displayNames = new Dictionary<string, string>() {
              {"всего","Территориальный" },
@@ -482,9 +482,9 @@ namespace stroevkaI.Services
             if (rowsToSum == null || !rowsToSum.Any())
                 return null;
 
-            var row = new PivotRow3
+            var row = new PivotRow
             {
-                ПСГ = "Территориальный",
+                Псг = "Территориальный",
                 Category = categoryName,
                 PchId = rootNode.Id,
                 Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
@@ -492,13 +492,13 @@ namespace stroevkaI.Services
 
             };
             if (displayNames.ContainsKey(categoryName))
-                row.ПЧ = displayNames[categoryName];
+                row.Пч = displayNames[categoryName];
             else
-                row.ПЧ = "Не определено";
+                row.Пч = "Не определено";
             row.Norder = Norders[categoryName];
 
             // Суммируем все числовые свойства
-            foreach (var prop in typeof(PivotRow3).GetProperties())
+            foreach (var prop in typeof(PivotRow).GetProperties())
             {
                 if (IsDecimalProperty(prop))
                 {
@@ -519,7 +519,7 @@ namespace stroevkaI.Services
                                 {
                                     details.Add(new DetailItem
                                     {
-                                        Name = $"{r.ПСГ} → {d.Name}",
+                                        Name = $"{r.Псг} → {d.Name}",
                                         Value = d.Value,
                                         Category = d.Category
                                     });
@@ -528,7 +528,7 @@ namespace stroevkaI.Services
                             else
                             {
                                 // Если деталей нет (например, для особых случаев), добавляем строку целиком
-                                details.Add(new DetailItem { Name = $"{r.ПСГ} ({r.ПЧ})", Value = val });
+                                details.Add(new DetailItem { Name = $"{r.Псг} ({r.Пч})", Value = val });
                             }
                         }
                     }
@@ -540,14 +540,14 @@ namespace stroevkaI.Services
 
             // Для итоговых строк эти поля пустые
             row.Начкар = "";
-            row.Datafilled = false;
+            row.Datafilled = "";
             return row;
         }
-        private List<PivotRow3> GetPsgRowsByCategory(List<PivotRow3> allPsgRows, string category)
+        private List<PivotRow> GetPsgRowsByCategory(List<PivotRow> allPsgRows, string category)
         {
             return allPsgRows.Where(r => r.Category == category).ToList();
         }
-        private PivotRow3 ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow3> allPsgRows)
+        private PivotRow ComputeTerritorialFpsRow(ReportNode rootNode, List<PivotRow> allPsgRows)
         {
             // 1. Берём все строки ПСГ с категорией "ФПС"
             var fpsRows = allPsgRows.Where(r => r.Category == "ФПС").ToList();
@@ -555,7 +555,7 @@ namespace stroevkaI.Services
             // 2. Исключаем строки, принадлежащие Прионежскому ПСГ
             //    Предположим, что в allPsgRows есть поле ПСГ (имя или Id) – мы можем отфильтровать
             //    Например, если мы храним имя ПСГ в свойстве ПСГ строки:
-            fpsRows = fpsRows.Where(r => r.ПСГ != "Прионежский").ToList();
+            fpsRows = fpsRows.Where(r => r.Псг != "Прионежский").ToList();
 
             // 3. Добавляем ПЧ-75 (лист) – если она не входит в уже отобранные строки
             //    Находим лист ПЧ-75
@@ -573,9 +573,9 @@ namespace stroevkaI.Services
             return CreateTerritorialRow(rootNode, "ФПС", fpsRows);
         }
 
-        private List<PivotRow3> ComputePsgSummaryRows(ReportNode psgNode)
+        private List<PivotRow> ComputePsgSummaryRows(ReportNode psgNode)
         {
-            var rows = new List<PivotRow3>();  //соберёт 
+            var rows = new List<PivotRow>();  //соберёт 
             var leaves = GetAllLeaves(psgNode);
             var leavesByType = leaves
                 .Where(l => !string.IsNullOrEmpty(l.Category))
@@ -605,7 +605,7 @@ namespace stroevkaI.Services
             var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList());
 
 
-            var ВПО_ЧПО_АСФrows = new List<PivotRow3>();
+            var ВПО_ЧПО_АСФrows = new List<PivotRow>();
             // 4. ВПО, ЧПО, АСФ
             foreach (var cat in new[] { "ВПО", "ЧПО", "АСФ" })
             {
@@ -617,13 +617,13 @@ namespace stroevkaI.Services
             }
             rows.AddRange(ВПО_ЧПО_АСФrows);
             //Сформировать строку "всего" для районного ПСГ и занести все предыдущие итоговые в childes
-            всегоRow.Childes.AddRange(new List<PivotRow3> { всегоПСГrow, другиеПСГRow });
+            всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow, другиеПСГRow });
             всегоRow.Childes.AddRange(ВПО_ЧПО_АСФrows);
 
             rows.Add(всегоRow);
             return rows;
         }
-        private PivotRow3 CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
+        private PivotRow CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
         {
             Dictionary<string, string> displayNames = new Dictionary<string, string>() {
              {"всего","" },
@@ -648,9 +648,9 @@ namespace stroevkaI.Services
              {"ППС",26 }
          };
 
-            var row = new PivotRow3
+            var row = new PivotRow
             {
-                ПСГ = psgNode.Name,
+                Псг = psgNode.Name,
                 Category = categoryName,
                 PchId = psgNode.Id,
                 Norder = psgNode.Norder,
@@ -665,11 +665,11 @@ namespace stroevkaI.Services
 
 
             if (displayNames.ContainsKey(categoryName))
-                row.ПЧ = displayNames[categoryName];
+                row.Пч = displayNames[categoryName];
             else if (categoryName == "всего")
-                row.ПЧ = psgNode.Name;
+                row.Пч = psgNode.Name;
             else
-                row.ПЧ = "Не определено";
+                row.Пч = "Не определено";
             #endregion
 
 
@@ -701,12 +701,12 @@ namespace stroevkaI.Services
             row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
             return row;
         }
-        private PivotRow3 CreateLeafRow(ReportNode leaf)
+        private PivotRow CreateLeafRow(ReportNode leaf)
         {
-            var row = new PivotRow3
+            var row = new PivotRow
             {
-                ПСГ = GetPsgNameForNode(leaf),
-                ПЧ = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
+                Псг = GetPsgNameForNode(leaf),
+                Пч = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
                 Category = leaf.Category,
                 PchId = leaf.Id,            // Id ПЧ т.к. это лист
                 Parent = leaf.ParentId,     // parentId(psgstat) = parent(psgdata) 
@@ -741,12 +741,12 @@ namespace stroevkaI.Services
 
             return row;
         }
-        private PivotRow3 CreateTotalRow(ReportNode psgNode, List<PivotRow3> rowsToSum)
+        private PivotRow CreateTotalRow(ReportNode psgNode, List<PivotRow> rowsToSum)
         {
-            var row = new PivotRow3
+            var row = new PivotRow
             {
-                ПСГ = psgNode.Name,
-                ПЧ = psgNode.Name,
+                Псг = psgNode.Name,
+                Пч = psgNode.Name,
                 Category = "всего",
                 PchId = psgNode.Id,
                 Parent = psgNode.ParentId,
@@ -755,7 +755,7 @@ namespace stroevkaI.Services
             };
 
             // Суммируем все числовые свойства из переданных строк
-            foreach (var prop in typeof(PivotRow3).GetProperties())
+            foreach (var prop in typeof(PivotRow).GetProperties())
             {
                 if (IsDecimalProperty(prop))
                 {
@@ -776,7 +776,7 @@ namespace stroevkaI.Services
                             else
                             {
                                 // если деталей нет, добавляем саму строку как единый элемент
-                                details.Add(new DetailItem { Name = r.ПЧ, Value = val });
+                                details.Add(new DetailItem { Name = r.Пч, Value = val });
                             }
                         }
                     }
@@ -859,9 +859,9 @@ namespace stroevkaI.Services
         // 3.6 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
         // -------------------------------------------
 
-        private void SetProperty(PivotRow3 row, string propName, decimal value)
+        private void SetProperty(PivotRow row, string propName, decimal value)
         {
-            var prop = typeof(PivotRow3).GetProperty(propName);
+            var prop = typeof(PivotRow).GetProperty(propName);
             if (prop != null && prop.CanWrite)
             {
                 prop.SetValue(row, value); // decimal → decimal? работает неявно
@@ -1173,134 +1173,130 @@ namespace stroevkaI.Services
         }
 
     }
-    // ... остальные методы (
-    //     ComputePsgSummaryRows, ComputeTerritorialFpsRow, GetAllLeaves,
-    //     ComputeLeafValue, SetProperty, GetPsgNameForNode, InitializeColumnConfigs,
-    //     IsDecimalProperty) — БЕЗ ИЗМЕНЕНИЙ.
-    // Скопируйте их из текущего PivotTreeBuilder без правок.
 
-    public class PivotRow3
-    {
-        // === Иерархия (скопировано из FirePsgStat) ===
-        public string ПСГ { get; set; }
-        public string ПЧ { get; set; }
-        public string Category { get; set; }
-        public int PchId { get; set; }
-        public int? Parent { get; set; }
-        public int Norder { get; set; }
-        public int Isitog { get; set; }
-        public List<PivotRow3> Childes = new List<PivotRow3>();
 
-        // === Все поля из FirePsgStat (в точности как там) ===
-        public decimal? AcBr { get; set; }
-        public decimal? AcRezerv { get; set; }
-        public decimal? AcRemont { get; set; }
-        public decimal? AclBr { get; set; }
-        public decimal? AclRezerv { get; set; }
-        public decimal? AclRemont { get; set; }
-        public decimal? АнрBr { get; set; }
-        public decimal? АнрRezerv { get; set; }
-        public decimal? АнрRemont { get; set; }
-        public decimal? АсаBr { get; set; }
-        public decimal? АсаRezerv { get; set; }
-        public decimal? АсаRemont { get; set; }
-        public decimal? АсоBr { get; set; }
-        public decimal? АсоRezerv { get; set; }
-        public decimal? АсоRemont { get; set; }
-        public decimal? АвBr { get; set; }
-        public decimal? АвRezerv { get; set; }
-        public decimal? АвRemont { get; set; }
-        public decimal? АсаАппАсмBr { get; set; }
-        public decimal? АсаАппАсмRezerv { get; set; }
-        public decimal? АсаАппАсмRemont { get; set; }
-        public decimal? ПнсBr { get; set; }
-        public decimal? ПнсRezerv { get; set; }
-        public decimal? ПнсRemont { get; set; }
-        public decimal? AlBr { get; set; }
-        public decimal? AlRezerv { get; set; }
-        public decimal? AlRemont { get; set; }
-        public decimal? КпBr { get; set; }
-        public decimal? КпRezerv { get; set; }
-        public decimal? КпRemont { get; set; }
-        public decimal? АрBr { get; set; }
-        public decimal? АрRezerv { get; set; }
-        public decimal? АрRemont { get; set; }
-        public decimal? АсмпПсаBr { get; set; }
-        public decimal? АсмпПсаRezerv { get; set; }
-        public decimal? АсмпПсаRemont { get; set; }
-        public decimal? АшBr { get; set; }
-        public decimal? АшRezerv { get; set; }
-        public decimal? АшRemont { get; set; }
-        public decimal? УксАбгBr { get; set; }
-        public decimal? УксАбгRezerv { get; set; }
-        public decimal? УксАбгRemont { get; set; }
-        public decimal? ПожПоездКорабльBr { get; set; }
-        public decimal? ПожПоездКорабльRezerv { get; set; }
-        public decimal? ПожПоездКорабльRemont { get; set; }
-        public decimal? ПожПоездBr { get; set; }
-        public decimal? ПожПоездRezerv { get; set; }
-        public decimal? ПожПоездRemont { get; set; }
-        public decimal? ПожКорабльКатерBr { get; set; }
-        public decimal? ПожКорабльКатерRezerv { get; set; }
-        public decimal? ПожКорабльКатерRemont { get; set; }
-        public decimal? АсмрхBr { get; set; }
-        public decimal? АсмрхRezerv { get; set; }
-        public decimal? АвсBr { get; set; }
-        public decimal? АвсRezerv { get; set; }
-        public decimal? РемонтОсновной { get; set; }
-        public decimal? РемонтСпециальной { get; set; }
-        public decimal? ПожарныйКорабльРемонт { get; set; }
-        public decimal? ПлавСредства { get; set; }
-        public decimal? Болотоходы { get; set; }
-        public decimal? Мотопомпы { get; set; }
-        public decimal? Прочее { get; set; }
-        public decimal? Tofirst { get; set; }
-        public decimal? Totow { get; set; }
-        public decimal? SizodBr { get; set; }
-        public decimal? SizodRezerv { get; set; }
-        public decimal? КостюмыЛ1Таск { get; set; }
-        public decimal? КостюмыТок { get; set; }
-        public decimal? КостюмыДругие { get; set; }
-        public decimal? Нк { get; set; }
-        public decimal? Диспетчер { get; set; }
-        public decimal? Пнк { get; set; }
-        public decimal? Ко { get; set; }
-        public decimal? Водитель { get; set; }
-        public decimal? Пожарный { get; set; }
-        public decimal? Гдзс { get; set; }
-        public decimal? ПоСписку { get; set; }
-        public decimal? Налицо { get; set; }
-        public decimal? Всего { get; set; }
-        public decimal? Резерв { get; set; }
-        public decimal? ГасиРасчёт { get; set; }
-        public decimal? ГасиРезерв { get; set; }
-        public decimal? ВсегоОтс { get; set; }
-        public decimal? Отпуск { get; set; }
-        public decimal? ПоБольничному { get; set; }
-        public decimal? Командировка { get; set; }
-        public decimal? Некомплект { get; set; }
-        public decimal? ПрочиеОтс { get; set; }
-        public decimal? ПенаРасчёт { get; set; }
-        public decimal? ПенаРезерв { get; set; }
-        public decimal? ПорошокРасчёт { get; set; }
-        public decimal? ПорошокРезерв { get; set; }
-        public decimal? Дт { get; set; }
-        public decimal? Бензин { get; set; }
-        public string? Начкар { get; set; }
-        // Datafilled – булево (показывает, заполнена ли строка)
-        public bool Datafilled { get; set; }
-        // === Словарь для деталей (подсказок) — оставляем как есть ===
-        public Dictionary<string, List<DetailItem>> CellDetails { get; set; } = new Dictionary<string, List<DetailItem>>();
-    }
-    /// <summary>
-    /// Класс для хранения информации о составляющей суммы
-    /// </summary>
-    public class DetailItem
-    {
-        public string Name { get; set; }   // например, "ПЧ-1" или "ПСГ Беломорский"
-        public decimal Value { get; set; }
-        public string Category { get; set; } // опционально, для группировки
-    }
+    //public class PivotRow
+    //{
+    //    // === Иерархия (скопировано из FirePsgStat) ===
+    //    public string ПСГ { get; set; }
+    //    public string ПЧ { get; set; }
+    //    public string Category { get; set; }
+    //    public int PchId { get; set; }
+    //    public int? Parent { get; set; }
+    //    public int Norder { get; set; }
+    //    public int Isitog { get; set; }
+    //    public List<PivotRow> Childes = new List<PivotRow>();
+
+    //    // === Все поля из FirePsgStat (в точности как там) ===
+    //    public decimal? AcBr { get; set; }
+    //    public decimal? AcRezerv { get; set; }
+    //    public decimal? AcRemont { get; set; }
+    //    public decimal? AclBr { get; set; }
+    //    public decimal? AclRezerv { get; set; }
+    //    public decimal? AclRemont { get; set; }
+    //    public decimal? АнрBr { get; set; }
+    //    public decimal? АнрRezerv { get; set; }
+    //    public decimal? АнрRemont { get; set; }
+    //    public decimal? АсаBr { get; set; }
+    //    public decimal? АсаRezerv { get; set; }
+    //    public decimal? АсаRemont { get; set; }
+    //    public decimal? АсоBr { get; set; }
+    //    public decimal? АсоRezerv { get; set; }
+    //    public decimal? АсоRemont { get; set; }
+    //    public decimal? АвBr { get; set; }
+    //    public decimal? АвRezerv { get; set; }
+    //    public decimal? АвRemont { get; set; }
+    //    public decimal? АсаАппАсмBr { get; set; }
+    //    public decimal? АсаАппАсмRezerv { get; set; }
+    //    public decimal? АсаАппАсмRemont { get; set; }
+    //    public decimal? ПнсBr { get; set; }
+    //    public decimal? ПнсRezerv { get; set; }
+    //    public decimal? ПнсRemont { get; set; }
+    //    public decimal? AlBr { get; set; }
+    //    public decimal? AlRezerv { get; set; }
+    //    public decimal? AlRemont { get; set; }
+    //    public decimal? КпBr { get; set; }
+    //    public decimal? КпRezerv { get; set; }
+    //    public decimal? КпRemont { get; set; }
+    //    public decimal? АрBr { get; set; }
+    //    public decimal? АрRezerv { get; set; }
+    //    public decimal? АрRemont { get; set; }
+    //    public decimal? АсмпПсаBr { get; set; }
+    //    public decimal? АсмпПсаRezerv { get; set; }
+    //    public decimal? АсмпПсаRemont { get; set; }
+    //    public decimal? АшBr { get; set; }
+    //    public decimal? АшRezerv { get; set; }
+    //    public decimal? АшRemont { get; set; }
+    //    public decimal? УксАбгBr { get; set; }
+    //    public decimal? УксАбгRezerv { get; set; }
+    //    public decimal? УксАбгRemont { get; set; }
+    //    public decimal? ПожПоездКорабльBr { get; set; }
+    //    public decimal? ПожПоездКорабльRezerv { get; set; }
+    //    public decimal? ПожПоездКорабльRemont { get; set; }
+    //    public decimal? ПожПоездBr { get; set; }
+    //    public decimal? ПожПоездRezerv { get; set; }
+    //    public decimal? ПожПоездRemont { get; set; }
+    //    public decimal? ПожКорабльКатерBr { get; set; }
+    //    public decimal? ПожКорабльКатерRezerv { get; set; }
+    //    public decimal? ПожКорабльКатерRemont { get; set; }
+    //    public decimal? АсмрхBr { get; set; }
+    //    public decimal? АсмрхRezerv { get; set; }
+    //    public decimal? АвсBr { get; set; }
+    //    public decimal? АвсRezerv { get; set; }
+    //    public decimal? РемонтОсновной { get; set; }
+    //    public decimal? РемонтСпециальной { get; set; }
+    //    public decimal? ПожарныйКорабльРемонт { get; set; }
+    //    public decimal? ПлавСредства { get; set; }
+    //    public decimal? Болотоходы { get; set; }
+    //    public decimal? Мотопомпы { get; set; }
+    //    public decimal? Прочее { get; set; }
+    //    public decimal? Tofirst { get; set; }
+    //    public decimal? Totow { get; set; }
+    //    public decimal? SizodBr { get; set; }
+    //    public decimal? SizodRezerv { get; set; }
+    //    public decimal? КостюмыЛ1Таск { get; set; }
+    //    public decimal? КостюмыТок { get; set; }
+    //    public decimal? КостюмыДругие { get; set; }
+    //    public decimal? Нк { get; set; }
+    //    public decimal? Диспетчер { get; set; }
+    //    public decimal? Пнк { get; set; }
+    //    public decimal? Ко { get; set; }
+    //    public decimal? Водитель { get; set; }
+    //    public decimal? Пожарный { get; set; }
+    //    public decimal? Гдзс { get; set; }
+    //    public decimal? ПоСписку { get; set; }
+    //    public decimal? Налицо { get; set; }
+    //    public decimal? Всего { get; set; }
+    //    public decimal? Резерв { get; set; }
+    //    public decimal? ГасиРасчёт { get; set; }
+    //    public decimal? ГасиРезерв { get; set; }
+    //    public decimal? ВсегоОтс { get; set; }
+    //    public decimal? Отпуск { get; set; }
+    //    public decimal? ПоБольничному { get; set; }
+    //    public decimal? Командировка { get; set; }
+    //    public decimal? Некомплект { get; set; }
+    //    public decimal? ПрочиеОтс { get; set; }
+    //    public decimal? ПенаРасчёт { get; set; }
+    //    public decimal? ПенаРезерв { get; set; }
+    //    public decimal? ПорошокРасчёт { get; set; }
+    //    public decimal? ПорошокРезерв { get; set; }
+    //    public decimal? Дт { get; set; }
+    //    public decimal? Бензин { get; set; }
+    //    public string? Начкар { get; set; }
+    //    // Datafilled – булево (показывает, заполнена ли строка)
+    //    public bool Datafilled { get; set; }
+    //    // === Словарь для деталей (подсказок) — оставляем как есть ===
+    //    public Dictionary<string, List<DetailItem>> CellDetails { get; set; } = new Dictionary<string, List<DetailItem>>();
+    //}
+    ///// <summary>
+    ///// Класс для хранения информации о составляющей суммы
+    ///// </summary>
+    //public class DetailItem
+    //{
+    //    public string Name { get; set; }   // например, "ПЧ-1" или "ПСГ Беломорский"
+    //    public decimal Value { get; set; }
+    //    public string Category { get; set; } // опционально, для группировки
+    //}
 }
 
 

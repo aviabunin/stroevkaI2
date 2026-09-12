@@ -40,7 +40,7 @@ namespace stroevkaI
 
         public string rootPsgName = "";
         private FirePsgStat selectedItem = null;
-        private PivotRow3 selectedItem1 = null;
+        private PivotRow selectedItem1 = null;
         private List<Psg> allPsgs;
         private bool isLeftPanelVisible = false;
 
@@ -52,7 +52,7 @@ namespace stroevkaI
         private List<Psg> cachedPsgList;
         private BackgroundWorker compareAllWorker;
 
-        List<PivotRow3> pivotSource;
+        List<PivotRow> pivotSource;
         private ColumnVisibilityManager _columnManager;
 
         #endregion
@@ -71,8 +71,8 @@ namespace stroevkaI
             karaulTextBox.Text = "       Караул № " + караул;
 
             // Сразу пустой источник, чтобы грид был не null, а пустой
-            PivotRowGrid.DataSource = new List<PivotRow3>();
-            EquipmentDataGridView.DataSource = new List<PivotRow3>();
+            PivotRowGrid.DataSource = new List<PivotRow>();
+            EquipmentDataGridView.DataSource = new List<PivotRow>();
 
             // Подписки на события гридов
             EquipmentDataGridView.CellValueChanged += EquipmentDataGridView_CellValueChanged;
@@ -104,66 +104,6 @@ namespace stroevkaI
         }
 
         private async void Form1_Load(object sender, EventArgs e)
-        //{
-        //    // Принудительно обновляем караул при загрузке
-        //        UpdateKaraul();
-
-        //    string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
-        //    jsonService = new JsonDataService(baseDir); // сетевой путь
-        //    cachedPchList = FireEquipsPivotRepository.getPchList();
-        //    cachedPsgList = FireEquipsPivotRepository.getPsgList();
-        //    statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
-        //    await BuildTreeAsync();
-
-        //    // Формируем список ПСГ (Загружаем список ПСГ)
-        //    LoadPsgList();
-
-        //    // Инициализируем rootPsgName из Settings
-        //    rootPsgName = Settings.Default.rootGarn;
-        //    if (string.IsNullOrEmpty(rootPsgName))
-        //    {
-        //        rootPsgName = "Территориальный";
-        //        Settings.Default.rootGarn = rootPsgName;
-        //        Settings.Default.Save();
-        //    }
-
-        //    // Устанавливаем выбранный ПСГ в комбобоксе
-        //    if (!string.IsNullOrEmpty(rootPsgName))
-        //    {
-        //        int index = cmbPsg.FindStringExact(rootPsgName);
-        //        if (index >= 0)
-        //        {
-        //            cmbPsg.SelectedIndex = index;
-        //        }
-        //        else
-        //        {
-        //            // Если не найден, выбираем территориальный
-        //            int territorialIndex = cmbPsg.FindStringExact("Территориальный");
-        //            if (territorialIndex >= 0)
-        //            {
-        //                cmbPsg.SelectedIndex = territorialIndex;
-        //                rootPsgName = "Территориальный";
-        //                Settings.Default.rootGarn = rootPsgName;
-        //                Settings.Default.Save();
-        //            }
-        //        }
-        //    }
-
-        //    // Загружаем корневой гарнизон
-        //    rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
-        //    EquipmentDataGridView.AutoGenerateColumns = false;
-
-        //    //Загрузка данных - из json 
-        //    // Пока для районного ПСГ Костомукши - и сравним
-        //    //LoadDataForPsg(rootPsg); пока перенесём это  в инициализацию редактора
-
-
-
-        //    InitGrid();
-
-        //    InitPivotGrid(rootPsgName);
-
-        //}
         {
             try
             {
@@ -220,8 +160,8 @@ namespace stroevkaI
         // Загрузка списка ПСГ — без побочных эффектов
         private void LoadPsgList()
         {
-            try
-            {
+            //try
+            //{
                 var psgNames = allPsgs.Select(p => p.Garnizon).ToList();
                 cmbPsg.Items.Clear();
                 foreach (var name in psgNames)
@@ -232,12 +172,12 @@ namespace stroevkaI
                 int idx = cmbPsg.FindStringExact(rootPsgName);
                 cmbPsg.SelectedIndex = idx >= 0 ? idx : 0;
                 cmbPsg.SelectedIndexChanged += CmbPsg_SelectedIndexChanged;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка загрузки списка ПСГ: {ex.Message}", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    MessageBox.Show($"Ошибка загрузки списка ПСГ: {ex.Message}", "Ошибка",
+            //        MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //}
         }
 
         #endregion
@@ -999,7 +939,7 @@ namespace stroevkaI
             var row = grid.Rows[e.RowIndex];
 
             // Проверяем, что строка привязана к объекту PivotRow
-            if (row.DataBoundItem is PivotRow3 pivotRow)
+            if (row.DataBoundItem is PivotRow pivotRow)
             {
                 // Получаем имя свойства, связанного с этой колонкой
                 var column = grid.Columns[e.ColumnIndex];
@@ -1106,13 +1046,13 @@ namespace stroevkaI
         {
             if (PivotRowGrid.CurrentRow != null)
             {
-                selectedItem1 = (PivotRow3)PivotRowGrid.CurrentRow.DataBoundItem;
+                selectedItem1 = (PivotRow)PivotRowGrid.CurrentRow.DataBoundItem;
                 if (selectedItem1 != null)
                 {
                     #region По двойному клику на ПСГ - выбрать его вместо ТПСГ
                     if (selectedItem1.Isitog == 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
                     {
-                        var str = selectedItem1.ПСГ;
+                        var str = selectedItem1.Псг;
                         if (cmbPsg.Items.Contains(str))
                             //lastChoose = cmbPsg.Text;
                             //if (str == cmbPsg.Text)
@@ -1124,7 +1064,7 @@ namespace stroevkaI
 
                     // Сделаем редактор глобально и сразу создать все редакторы с загрузкой данных
                     
-                    using (var editorForm = new PivotRowEditor(selectedItem1.PchId))
+                    using (var editorForm = new PivotRowEditor((int)selectedItem1.PchId))
                     {
                         editorForm.ShowDialog();
                     }
@@ -1166,3 +1106,63 @@ namespace stroevkaI
         }
     }
 }
+//{
+//    // Принудительно обновляем караул при загрузке
+//        UpdateKaraul();
+
+//    string baseDir = Directory.GetCurrentDirectory() + @"\psg_data\";
+//    jsonService = new JsonDataService(baseDir); // сетевой путь
+//    cachedPchList = FireEquipsPivotRepository.getPchList();
+//    cachedPsgList = FireEquipsPivotRepository.getPsgList();
+//    statusStrip1.Items.Add(new ToolStripStatusLabel("Готово"));
+//    await BuildTreeAsync();
+
+//    // Формируем список ПСГ (Загружаем список ПСГ)
+//    LoadPsgList();
+
+//    // Инициализируем rootPsgName из Settings
+//    rootPsgName = Settings.Default.rootGarn;
+//    if (string.IsNullOrEmpty(rootPsgName))
+//    {
+//        rootPsgName = "Территориальный";
+//        Settings.Default.rootGarn = rootPsgName;
+//        Settings.Default.Save();
+//    }
+
+//    // Устанавливаем выбранный ПСГ в комбобоксе
+//    if (!string.IsNullOrEmpty(rootPsgName))
+//    {
+//        int index = cmbPsg.FindStringExact(rootPsgName);
+//        if (index >= 0)
+//        {
+//            cmbPsg.SelectedIndex = index;
+//        }
+//        else
+//        {
+//            // Если не найден, выбираем территориальный
+//            int territorialIndex = cmbPsg.FindStringExact("Территориальный");
+//            if (territorialIndex >= 0)
+//            {
+//                cmbPsg.SelectedIndex = territorialIndex;
+//                rootPsgName = "Территориальный";
+//                Settings.Default.rootGarn = rootPsgName;
+//                Settings.Default.Save();
+//            }
+//        }
+//    }
+
+//    // Загружаем корневой гарнизон
+//    rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
+//    EquipmentDataGridView.AutoGenerateColumns = false;
+
+//    //Загрузка данных - из json 
+//    // Пока для районного ПСГ Костомукши - и сравним
+//    //LoadDataForPsg(rootPsg); пока перенесём это  в инициализацию редактора
+
+
+
+//    InitGrid();
+
+//    InitPivotGrid(rootPsgName);
+
+//}
