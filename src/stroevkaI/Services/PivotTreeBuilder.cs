@@ -34,6 +34,27 @@ namespace stroevkaI.Services
             _jsonService = jsonService;
         }
 
+        /// <summary>
+        /// Тест - замер времени загрузки
+        /// </summary>
+        /// <param name="psgId"></param>
+        /// <returns></returns>
+        public async Task<List<PivotRow>> LoadItogiOnlyAsync(int psgId)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            var rows = await _context.PivotRows
+                .AsNoTracking()
+                .Where(r => r.PsgId == psgId && r.Isitog == 1)
+                .OrderBy(r => r.Norder)
+                .ToListAsync();
+
+            System.Diagnostics.Debug.WriteLine(
+                $"LoadItogiOnlyAsync(psgId={psgId}): {rows.Count} rows in {sw.ElapsedMilliseconds} ms");
+
+            return rows;
+        }
+
         // ==========================================================
         // ЗАГРУЗКА ДАННЫХ ДЛЯ ОДНОГО ПСГ  123
         // ==========================================================

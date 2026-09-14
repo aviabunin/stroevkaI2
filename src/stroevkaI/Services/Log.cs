@@ -1,0 +1,38 @@
+﻿using System.Diagnostics;
+using System.IO;
+
+namespace stroevkaI.Services
+{
+    public static class Log
+    {
+        private static readonly object _lock = new();
+        private static readonly string _path;
+
+        static Log()
+        {
+            var dir = Path.Combine(AppContext.BaseDirectory, "logs");
+            Directory.CreateDirectory(dir);
+            _path = Path.Combine(dir, $"stroevka_{DateTime.Now:yyyy-MM-dd}.log");
+
+            // Дублируем всё, что идёт через Debug/Trace, в файл
+            Trace.Listeners.Add(new TextWriterTraceListener(_path));
+            Trace.AutoFlush = true;
+        }
+
+        public static void Write(string message)
+        {
+            lock (_lock)
+            {
+                var line = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+                //Debug.WriteLine(line);
+                Trace.WriteLine(line);
+            }
+        }
+
+        public static void Mark(string stage, long elapsedMs, long deltaMs = 0)
+        {
+            var delta = deltaMs > 0 ? $" (+{deltaMs,5} ms)" : "";
+            Write($"[{elapsedMs,6} ms]{delta} {stage}");
+        }
+    }
+}

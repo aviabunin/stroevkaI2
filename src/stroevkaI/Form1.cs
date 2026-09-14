@@ -72,60 +72,27 @@ namespace stroevkaI
             _columnManager = new ColumnVisibilityManager(PivotRowGrid);
         }
 
-        private async void Form1_Load(object sender, EventArgs e)
+        private void Form1_Load(object sender, EventArgs e)
         {
             var sw = Stopwatch.StartNew();
-            long last = 0;
             void Mark(string stage)
             {
-                var now = sw.ElapsedMilliseconds;
-                Debug.WriteLine($"[{now,6} ms] (+{now - last,5} ms) {stage}");
-                UpdateStatus($"{stage} ({now} ms)");
-                last = now;
+                Log.Mark(stage, sw.ElapsedMilliseconds, 0);
+                UpdateStatus($"{stage} ({sw.ElapsedMilliseconds} ms)");
             }
 
-            try
-            {
-                Mark("Start");
+            Mark("Start");
 
-                _jsonService = new JsonDataService(
-                    Path.Combine(AppContext.BaseDirectory, _config.JsonLocalPath));
-                _appStatus = new AppStatusService(
-                    _jsonService.GetBasePath(),
-                    _config.JsonNetworkPath,
-                    _config.NetworkDrives);
-                _treeBuilder = new PivotTreeBuilder(context, _appStatus, _jsonService);
-                Mark("Services created");
+            var allRows = FastPivotLoader.LoadTerritorialFast();
+            Mark($"FastPivotLoader ({allRows.Count} rows)");
 
-                //await _appStatus.RefreshAsync(context);
-                //Mark($"AppStatus.RefreshAsync ? DB={_appStatus.Status.DatabaseStatus}");
+            var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
+            Mark($"BuildTerritorialView ({displayRows.Count} rows)");
 
-                allPsgs = FireEquipsPivotRepository.LoadAllPsgs();
-                Mark($"LoadAllPsgs ({allPsgs.Count})");
-
-                rootPsgName = Settings.Default.rootGarn;
-                if (string.IsNullOrEmpty(rootPsgName)) rootPsgName = "Территориальный";
-                LoadPsgList();
-                Mark($"LoadPsgList (selected={rootPsgName})");
-
-                await BuildTreeAsync(rootPsgName);
-                Mark($"BuildTreeAsync({rootPsgName})");
-
-                StartKaraulTimer();
-                StartClockTimer();
-                Mark("Timers started");
-
-                //UpdateKaraul();
-                //Mark("UpdateKaraul");
-
-                Mark("Done");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка инициализации: {ex.Message}", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            PivotRowGrid.DataSource = displayRows;
+            Mark("Grid bound");
         }
+
         private async Task BuildTreeAsync(string psgName)
         {
             var rows = await _treeBuilder.GeneratePivotRowsAsync(psgName, forceReload: true);
