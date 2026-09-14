@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="rootGarn" Type="System.String" Scope="User">
-      <Value Profile="(Default)">Костомукшский</Value>
+      <Value Profile="(Default)">Территориальный</Value>
     </Setting>
   </Settings>
 </SettingsFile>

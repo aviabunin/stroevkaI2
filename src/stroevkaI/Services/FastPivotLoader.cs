@@ -26,9 +26,7 @@ namespace stroevkaI.Services
             var tConnect = sw.ElapsedMilliseconds;
 
             string sql = @"
-                SELECT * FROM pivot_rows
-                WHERE psg_id = 11
-                   OR (isitog = 1 AND psg_id <> 11)";
+                SELECT * FROM pivot_rows"; //                WHERE psg_id = 11  OR(isitog = 1 AND psg_id <> 11)
 
             using var cmd = new MySqlCommand(sql, conn);
             using var reader = cmd.ExecuteReader();

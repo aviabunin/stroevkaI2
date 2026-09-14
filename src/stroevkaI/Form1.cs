@@ -75,22 +75,46 @@ namespace stroevkaI
         private void Form1_Load(object sender, EventArgs e)
         {
             var sw = Stopwatch.StartNew();
+            Mark("Start");
+
+            // Временно всегда Территориальный для отладки
+            rootPsgName = "Территориальный";
+            Settings.Default.rootGarn = rootPsgName;
+            Settings.Default.Save();
+
+            //for (int i = 0; i < 3; i++)
+            //{
+            //    var t = Stopwatch.StartNew();
+            //    FastPivotLoader.LoadTerritorialFast();
+            //    Log.Write($"[Fast] call{i + 1}: {t.ElapsedMilliseconds} ms");
+            //}
+            //return;
+
+            var allRows = FastPivotLoader.LoadTerritorialFast();
+            Mark($"FastPivotLoader ({allRows.Count})");
+
+            var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
+            Mark($"BuildTerritorialView ({displayRows.Count})");
+
+            PivotRowGrid.DataSource = displayRows;
+            Mark("Grid bound");
+            //var sw = Stopwatch.StartNew();
             void Mark(string stage)
             {
                 Log.Mark(stage, sw.ElapsedMilliseconds, 0);
                 UpdateStatus($"{stage} ({sw.ElapsedMilliseconds} ms)");
             }
 
-            Mark("Start");
+            //Mark("Start");
 
-            var allRows = FastPivotLoader.LoadTerritorialFast();
-            Mark($"FastPivotLoader ({allRows.Count} rows)");
+            //var allRows = FastPivotLoader.LoadTerritorialFast();
+            //Mark($"FastPivotLoader ({allRows.Count} rows)");
 
-            var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
-            Mark($"BuildTerritorialView ({displayRows.Count} rows)");
+            //var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
+            //Mark($"BuildTerritorialView ({displayRows.Count} rows)");
 
-            PivotRowGrid.DataSource = displayRows;
-            Mark("Grid bound");
+            //PivotRowGrid.DataSource = displayRows;
+            //Mark("Grid bound");
         }
 
         private async Task BuildTreeAsync(string psgName)

@@ -25,7 +25,7 @@ namespace stroevkaI.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Костомукшский")]
+        [global::System.Configuration.DefaultSettingValueAttribute("Территориальный")]
         public string rootGarn {
             get {
                 return ((string)(this["rootGarn"]));
