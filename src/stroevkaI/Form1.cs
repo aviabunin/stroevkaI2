@@ -17,6 +17,8 @@ namespace stroevkaI
     {
         #region Параметры программы
 
+        private List<PivotRow> _allPivotRows;
+        private readonly Dictionary<string, int> _psgNameToId = new();
 
         public stroevkaContext context = new stroevkaContext();
         private JsonDataService _jsonService;
@@ -75,47 +77,149 @@ namespace stroevkaI
         private void Form1_Load(object sender, EventArgs e)
         {
             var sw = Stopwatch.StartNew();
+            void Mark(string stage) => Log.Mark(stage, sw.ElapsedMilliseconds, 0);
+
             Mark("Start");
 
-            // Временно всегда Территориальный для отладки
-            rootPsgName = "Территориальный";
-            Settings.Default.rootGarn = rootPsgName;
-            Settings.Default.Save();
+            // Один раз загружаем все строки pivot_rows
+            _allPivotRows = FastPivotLoader.LoadAll();
+            Mark($"LoadAll ({_allPivotRows.Count})");
 
-            //for (int i = 0; i < 3; i++)
-            //{
-            //    var t = Stopwatch.StartNew();
-            //    FastPivotLoader.LoadTerritorialFast();
-            //    Log.Write($"[Fast] call{i + 1}: {t.ElapsedMilliseconds} ms");
-            //}
-            //return;
+            // Заполняем cmbPsg — только Территориальный + 18 районных ПСГ
+            LoadPsgListFromDb();
+            Mark($"LoadPsgList ({cmbPsg.Items.Count})");
 
-            var allRows = FastPivotLoader.LoadTerritorialFast();
-            Mark($"FastPivotLoader ({allRows.Count})");
+            // Ставим сохранённый ПСГ
+            rootPsgName = Settings.Default.rootGarn;
+            if (string.IsNullOrEmpty(rootPsgName) || !_psgNameToId.ContainsKey(rootPsgName))
+                rootPsgName = "Территориальный";
 
-            var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
-            Mark($"BuildTerritorialView ({displayRows.Count})");
+            cmbPsg.SelectedIndexChanged -= CmbPsg_SelectedIndexChanged;
+            int idx = cmbPsg.FindStringExact(rootPsgName);
+            cmbPsg.SelectedIndex = idx >= 0 ? idx : 0;
+            cmbPsg.SelectedIndexChanged += CmbPsg_SelectedIndexChanged;
 
-            PivotRowGrid.DataSource = displayRows;
-            Mark("Grid bound");
-            //var sw = Stopwatch.StartNew();
-            void Mark(string stage)
+            ShowView(rootPsgName);
+            Mark($"ShowView({rootPsgName})");
+        }
+
+        private void LoadPsgListFromDb()
+        {
+            cmbPsg.Items.Clear();
+            _psgNameToId.Clear();
+
+            using var conn = new MySqlConnection(FastPivotLoader.ConnString);
+            conn.Open();
+
+            // "Территориальный" — отдельно, всегда первым
+            cmbPsg.Items.Add("Территориальный");
+            _psgNameToId["Территориальный"] = 11;
+
+            // 18 районных ПСГ — parent = 11, isitog = 1
+            using var cmd = new MySqlCommand(@"
+                SELECT id, name
+                FROM psgstat
+                WHERE used = 1 AND isitog = 1 AND parent = 11 and garntype='всего'
+                ORDER BY norder", conn);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                Log.Mark(stage, sw.ElapsedMilliseconds, 0);
-                UpdateStatus($"{stage} ({sw.ElapsedMilliseconds} ms)");
+                int id = reader.GetInt32(0);
+                string name = reader.GetString(1);
+
+                cmbPsg.Items.Add(name);
+                _psgNameToId[name] = id;
+            }
+        }
+
+        private void ShowView(string psgName)
+        {
+            if (!_psgNameToId.TryGetValue(psgName, out var psgId))
+            {
+                PivotRowGrid.DataSource = new List<PivotRow>();
+                return;
             }
 
-            //Mark("Start");
+            List<PivotRow> rows;
 
-            //var allRows = FastPivotLoader.LoadTerritorialFast();
-            //Mark($"FastPivotLoader ({allRows.Count} rows)");
+            if (psgId == 11)
+                rows = PivotRowDisplayBuilder.BuildTerritorialView(_allPivotRows);
+            else
+                rows = PivotRowDisplayBuilder.BuildPsgView(_allPivotRows, psgId);
 
-            //var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
-            //Mark($"BuildTerritorialView ({displayRows.Count} rows)");
-
-            //PivotRowGrid.DataSource = displayRows;
-            //Mark("Grid bound");
+            PivotRowGrid.DataSource = rows;
+            HighlightDatafilledRows();
+            UpdateStatus($"{psgName}: {rows.Count} строк");
         }
+
+
+        private int GetPsgIdByName(string name)
+        {
+            // быстрый ADO.NET-запрос
+            using var conn = new MySqlConnection(FastPivotLoader.ConnString);
+            conn.Open();
+            using var cmd = new MySqlCommand(
+                "SELECT id FROM psgstat WHERE name = @n AND used = 1 LIMIT 1", conn);
+            cmd.Parameters.AddWithValue("@n", name.Trim());
+            var obj = cmd.ExecuteScalar();
+            return obj == null ? -1 : Convert.ToInt32(obj);
+        }
+
+  
+
+        private async void CmbPsg_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbPsg.SelectedItem == null) return;
+            rootPsgName = cmbPsg.SelectedItem.ToString();
+            Settings.Default.rootGarn = rootPsgName;
+            Settings.Default.Save();
+            ShowView(rootPsgName);
+        }
+        //private void Form1_Load(object sender, EventArgs e)
+        //{
+        //    var sw = Stopwatch.StartNew();
+        //    Mark("Start");
+
+        //    // Временно всегда Территориальный для отладки
+        //    rootPsgName = "Территориальный";
+        //    Settings.Default.rootGarn = rootPsgName;
+        //    Settings.Default.Save();
+
+        //    //for (int i = 0; i < 3; i++)
+        //    //{
+        //    //    var t = Stopwatch.StartNew();
+        //    //    FastPivotLoader.LoadTerritorialFast();
+        //    //    Log.Write($"[Fast] call{i + 1}: {t.ElapsedMilliseconds} ms");
+        //    //}
+        //    //return;
+
+        //    var allRows = FastPivotLoader.LoadTerritorialFast();
+        //    Mark($"FastPivotLoader ({allRows.Count})");
+
+        //    var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
+        //    Mark($"BuildTerritorialView ({displayRows.Count})");
+
+        //    PivotRowGrid.DataSource = displayRows;
+        //    Mark("Grid bound");
+        //    //var sw = Stopwatch.StartNew();
+        //    void Mark(string stage)
+        //    {
+        //        Log.Mark(stage, sw.ElapsedMilliseconds, 0);
+        //        UpdateStatus($"{stage} ({sw.ElapsedMilliseconds} ms)");
+        //    }
+
+        //    //Mark("Start");
+
+        //    //var allRows = FastPivotLoader.LoadTerritorialFast();
+        //    //Mark($"FastPivotLoader ({allRows.Count} rows)");
+
+        //    //var displayRows = PivotRowDisplayBuilder.BuildTerritorialView(allRows);
+        //    //Mark($"BuildTerritorialView ({displayRows.Count} rows)");
+
+        //    //PivotRowGrid.DataSource = displayRows;
+        //    //Mark("Grid bound");
+        //}
 
         private async Task BuildTreeAsync(string psgName)
         {
@@ -126,7 +230,7 @@ namespace stroevkaI
         }
 
         // Загрузка списка ПСГ — без побочных эффектов
-        private void LoadPsgList()
+        private void LoadPsgListУдалить()
         {
             //try
             //{
@@ -151,29 +255,29 @@ namespace stroevkaI
         #endregion
 
         #region Обработка событий от ComboBox
-        private async void CmbPsg_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (cmbPsg.SelectedItem == null) return;
+        //private async void CmbPsg_SelectedIndexChanged(object sender, EventArgs e)
+        //{
+        //    if (cmbPsg.SelectedItem == null) return;
 
-            rootPsgName = cmbPsg.SelectedItem.ToString();
-            Settings.Default.rootGarn = rootPsgName;
-            Settings.Default.Save();
+        //    rootPsgName = cmbPsg.SelectedItem.ToString();
+        //    Settings.Default.rootGarn = rootPsgName;
+        //    Settings.Default.Save();
 
-            rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
-            rootPsg1 = FireEquipsPivotRepository.PsgByName(rootPsgName);
+        //    rootPsg = FireEquipsPivotRepository.GetPsgByName2(rootPsgName);
+        //    rootPsg1 = FireEquipsPivotRepository.PsgByName(rootPsgName);
 
-            UpdateStatus($"Загрузка «{rootPsgName}»...");
+        //    UpdateStatus($"Загрузка «{rootPsgName}»...");
 
-            try
-            {
-                await BuildTreeAsync(rootPsgName);
-                UpdateStatus($"Выбран гарнизон: {rootPsgName}");
-            }
-            catch (Exception ex)
-            {
-                UpdateStatus($"Ошибка: {ex.Message}");
-            }
-        }
+        //    try
+        //    {
+        //        await BuildTreeAsync(rootPsgName);
+        //        UpdateStatus($"Выбран гарнизон: {rootPsgName}");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        UpdateStatus($"Ошибка: {ex.Message}");
+        //    }
+        //}
         #endregion
 
         #region Управление левой панелью
