@@ -145,22 +145,22 @@ namespace stroevkaI.Services
 
         public static List<PivotRow> BuildPsgView(List<PivotRow> allRows, int psgId)
         {
-            var psgRows = allRows.Where(r => r.PsgId == psgId).ToList();
-            var leafRows = psgRows.Where(r => r.Isitog == 0).ToList();
-            var itogiRows = psgRows.Where(r => r.Isitog == 1).ToList();
+            var psgRows = allRows.Where(r => (r.Id == psgId) || (r.Parent == psgId)).ToList();
+            var leafRows = psgRows.Where(r =>  (r.Isitog == 0)).ToList();
+            var itogiRows = psgRows.Where(r => (r.Isitog == 1)).ToList();
 
             // Найти строку "всего"
             var root = itogiRows.FirstOrDefault(r => r.Category == "всего");
             if (root == null) return new List<PivotRow>();
 
             // Обязательные: ГПС, другие
-            var gpsRow = itogiRows.FirstOrDefault(r => r.Category == "ГПС");
-            var otherRow = itogiRows.FirstOrDefault(r => r.Category == "другие");
+            var gpsRow = itogiRows.FirstOrDefault(r => r.Category.Contains( "ГПС"));
+            var otherRow = itogiRows.FirstOrDefault(r => r.Category.Contains("другие"));
 
             // Опциональные: ЧПО, ВПО, АСФ (если есть)
-            var chpoRow = itogiRows.FirstOrDefault(r => r.Category == "ЧПО");
-            var vpoRow = itogiRows.FirstOrDefault(r => r.Category == "ВПО");
-            var asfRow = itogiRows.FirstOrDefault(r => r.Category == "АСФ");
+            var chpoRow = itogiRows.FirstOrDefault(r => r.Category.Contains("ЧПО"));
+            var vpoRow = itogiRows.FirstOrDefault(r => r.Category.Contains("ВПО"));
+            var asfRow = itogiRows.FirstOrDefault(r => r.Category.Contains("АСФ"));
 
             var displayRows = new List<PivotRow> { root };
             if (gpsRow != null) displayRows.Add(gpsRow);
@@ -207,6 +207,7 @@ namespace stroevkaI.Services
             foreach (var row in displayRows)
                 BuildCellDetails(row);
 
+            displayRows.AddRange(leafRows);
             return displayRows;
         }
         ///// <summary>
