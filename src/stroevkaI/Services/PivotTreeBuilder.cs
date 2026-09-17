@@ -1129,7 +1129,7 @@ namespace stroevkaI.Services
                 ["ПоСписку"] = new ColumnConfig { PropertyName = "ПоСписку", SourceTable = "psgdata", FilterValues = new List<string> { "ПоСписку" }, AggregateField = "count" },
                 ["Налицо"] = new ColumnConfig { PropertyName = "Налицо", SourceTable = "sostav", FilterValues = lstНалицо, AggregateField = "count" },
                 ["Всего"] = new ColumnConfig { PropertyName = "Всего", SourceTable = "sostav", FilterValues = lstВсего, AggregateField = "count" },
-                ["Резерв"] = new ColumnConfig { PropertyName = "Резерв", SourceTable = "sostav", FilterValues = new List<string> { "резерв" }, AggregateField = "count" },//TODO только отсутствующие 
+                ["Резерв"] = new ColumnConfig { PropertyName = "Резерв", SourceTable = "sostav", FilterValues = new List<string> { "резерв" }, AggregateField = "count" },
                 #endregion
 
                 #region ---- Отсутствующие (sostav) ----

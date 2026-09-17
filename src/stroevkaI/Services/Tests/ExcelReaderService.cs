@@ -51,7 +51,7 @@ namespace stroevkaI.Services.Tests
         /// <param name="filePath">Полный путь к Excel файлу</param>
         /// <param name="rootpsg">Корневой ПСГ (объект из таблицы psg)</param>
         /// <returns>Словарь с кодом строки и данными</returns>
-        public Dictionary<string, StroevkaRowData> ReadExcelFile(string filePath, Psg rootpsg, int rowsCount)//todo добавить количСтрок
+        public Dictionary<string, StroevkaRowData> ReadExcelFile(string filePath, Psg rootpsg, int rowsCount)
         {
             int firstColumn = 2;
             int lastColumn = 68;// всегда 68

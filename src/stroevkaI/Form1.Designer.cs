@@ -50,11 +50,14 @@
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.panelLeft = new System.Windows.Forms.Panel();
+            this.tabControl1 = new System.Windows.Forms.TabControl();
+            this.HelpTab = new System.Windows.Forms.TabPage();
+            this.stroevkaHelpDoc1 = new stroevkaI.Controls.StroevkaHelpDoc();
+            this.commandTab = new System.Windows.Forms.TabPage();
             this.listBoxTools = new System.Windows.Forms.ListBox();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.PivotRowGrid = new System.Windows.Forms.DataGridView();
             this.dataGridViewTextBoxColumn1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.ColumnNorder = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Datafilled = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.dataGridViewTextBoxColumn2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumn3 = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -133,6 +136,9 @@
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
             this.panelLeft.SuspendLayout();
+            this.tabControl1.SuspendLayout();
+            this.HelpTab.SuspendLayout();
+            this.commandTab.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.SuspendLayout();
@@ -315,12 +321,53 @@
             // 
             // panelLeft
             // 
-            this.panelLeft.Controls.Add(this.listBoxTools);
+            this.panelLeft.Controls.Add(this.tabControl1);
             this.panelLeft.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelLeft.Location = new System.Drawing.Point(0, 0);
             this.panelLeft.Name = "panelLeft";
             this.panelLeft.Size = new System.Drawing.Size(237, 399);
             this.panelLeft.TabIndex = 0;
+            // 
+            // tabControl1
+            // 
+            this.tabControl1.Controls.Add(this.HelpTab);
+            this.tabControl1.Controls.Add(this.commandTab);
+            this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tabControl1.Location = new System.Drawing.Point(0, 0);
+            this.tabControl1.Name = "tabControl1";
+            this.tabControl1.SelectedIndex = 0;
+            this.tabControl1.Size = new System.Drawing.Size(237, 399);
+            this.tabControl1.TabIndex = 0;
+            // 
+            // HelpTab
+            // 
+            this.HelpTab.Controls.Add(this.stroevkaHelpDoc1);
+            this.HelpTab.Location = new System.Drawing.Point(4, 22);
+            this.HelpTab.Name = "HelpTab";
+            this.HelpTab.Padding = new System.Windows.Forms.Padding(3);
+            this.HelpTab.Size = new System.Drawing.Size(229, 373);
+            this.HelpTab.TabIndex = 0;
+            this.HelpTab.Text = "Справка";
+            this.HelpTab.UseVisualStyleBackColor = true;
+            // 
+            // stroevkaHelpDoc1
+            // 
+            this.stroevkaHelpDoc1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.stroevkaHelpDoc1.Location = new System.Drawing.Point(3, 3);
+            this.stroevkaHelpDoc1.Name = "stroevkaHelpDoc1";
+            this.stroevkaHelpDoc1.Size = new System.Drawing.Size(223, 367);
+            this.stroevkaHelpDoc1.TabIndex = 0;
+            // 
+            // commandTab
+            // 
+            this.commandTab.Controls.Add(this.listBoxTools);
+            this.commandTab.Location = new System.Drawing.Point(4, 22);
+            this.commandTab.Name = "commandTab";
+            this.commandTab.Padding = new System.Windows.Forms.Padding(3);
+            this.commandTab.Size = new System.Drawing.Size(229, 373);
+            this.commandTab.TabIndex = 1;
+            this.commandTab.Text = "Задачи";
+            this.commandTab.UseVisualStyleBackColor = true;
             // 
             // listBoxTools
             // 
@@ -335,11 +382,10 @@
             "TreeBuilder",
             "Сравнение с БД",
             "Сравнение всех"});
-            this.listBoxTools.Location = new System.Drawing.Point(0, 0);
+            this.listBoxTools.Location = new System.Drawing.Point(3, 3);
             this.listBoxTools.Name = "listBoxTools";
-            this.listBoxTools.Size = new System.Drawing.Size(237, 399);
-            this.listBoxTools.TabIndex = 0;
-            this.listBoxTools.SelectedIndexChanged += new System.EventHandler(this.ListBoxTools_SelectedIndexChanged);
+            this.listBoxTools.Size = new System.Drawing.Size(223, 367);
+            this.listBoxTools.TabIndex = 1;
             // 
             // splitContainer2
             // 
@@ -361,7 +407,6 @@
             this.PivotRowGrid.ColumnHeadersHeight = 80;
             this.PivotRowGrid.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.dataGridViewTextBoxColumn1,
-            this.ColumnNorder,
             this.Datafilled,
             this.dataGridViewTextBoxColumn2,
             this.dataGridViewTextBoxColumn3,
@@ -451,13 +496,6 @@
             this.dataGridViewTextBoxColumn1.Name = "dataGridViewTextBoxColumn1";
             this.dataGridViewTextBoxColumn1.ReadOnly = true;
             this.dataGridViewTextBoxColumn1.Width = 150;
-            // 
-            // ColumnNorder
-            // 
-            this.ColumnNorder.DataPropertyName = "Norder";
-            this.ColumnNorder.HeaderText = "Norder";
-            this.ColumnNorder.Name = "ColumnNorder";
-            this.ColumnNorder.Width = 30;
             // 
             // Datafilled
             // 
@@ -961,6 +999,9 @@
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.panelLeft.ResumeLayout(false);
+            this.tabControl1.ResumeLayout(false);
+            this.HelpTab.ResumeLayout(false);
+            this.commandTab.ResumeLayout(false);
             this.splitContainer2.Panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
@@ -976,7 +1017,6 @@
         private System.Windows.Forms.Panel panelBottom;
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.Panel panelLeft;
-        private System.Windows.Forms.ListBox listBoxTools;
         private System.Windows.Forms.StatusStrip statusStrip1;
         private ToolStripControlHost toolStripSpacer;
         private ToolStrip toolStripLeft;
@@ -996,8 +1036,12 @@
         private ToolStripButton ЛСtoolStrip;
         private ToolStripButton BrtoolStripButton;
         private ToolStripButton othertoolStrip;
+        private TabControl tabControl1;
+        private TabPage HelpTab;
+        private Controls.StroevkaHelpDoc stroevkaHelpDoc1;
+        private TabPage commandTab;
+        private ListBox listBoxTools;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn1;
-        private DataGridViewTextBoxColumn ColumnNorder;
         private DataGridViewCheckBoxColumn Datafilled;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn2;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn3;

@@ -410,7 +410,7 @@ namespace StorageI.ModelsStroevkaMySql
 
 
 
-        public static Psg GetPsgByName(string psgName)//TODO
+        public static Psg GetPsgByName(string psgName)
         {
             context = new stroevkaContext();
             return context.Psgs.Where(c => c.Garnizon.Trim() == psgName).FirstOrDefault();

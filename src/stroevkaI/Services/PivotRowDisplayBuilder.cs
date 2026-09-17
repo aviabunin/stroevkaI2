@@ -4,53 +4,58 @@ namespace stroevkaI.Services
 {
     public class PivotRowDisplayBuilder {
 
-        private static readonly string[] AllTerritorialCategories =
-                   { "ГПС", "ФПС", "ЧПО", "ВПО", "другие", "АСФ" };
-        private static readonly string[] CategoriesForTotal =
-    { "ГПС", "другие", "ЧПО", "ВПО" };
+        private static readonly string[] AllTerritorialCategories = { "ГПС", "ФПС", "ЧПО", "ВПО", "другие", "АСФ" };
+        private static readonly string[] CategoriesForTotal       = { "ГПС", "другие", "ЧПО", "ВПО" };
 
         public static List<PivotRow> BuildTerritorialView(List<PivotRow> allRows)
         {
             var terrRows = allRows.Where(r => r.PsgId == 11).ToList();
-            var psgItogiRows = allRows.Where(r => r.PsgId != 11 && r.Isitog == 1).ToList();
-            var leafRows = allRows.Where(r => r.Isitog == 0).ToList();
+            var psgItogiRows = allRows.Where(r => !r.Псг.Contains("Террит") && r.Isitog == 1).ToList();
+            //var leafRows = allRows.Where(r => r.Isitog == 1  && !r.Псг.ToLower().Contains("террит")).ToList();//Здесь выбрать только итоги для районных
 
+            //root - корень дерева - террит ПСГ PivotRow
             var root = terrRows.FirstOrDefault(r => r.Parent == 0)
                     ?? terrRows.FirstOrDefault(r => r.Category == "всего");
             if (root == null) return new List<PivotRow>();
 
+            // получим строки PivotRow для каждой категории - всего 6 строк
             var terrCategoryRows = AllTerritorialCategories
                 .Select(cat => terrRows.FirstOrDefault(r => r.Category == cat))
                 .Where(r => r != null)
                 .ToList();
 
             // root.Childes = 6 категорий
-            root.Childes = terrCategoryRows;
+            root.Childes = terrCategoryRows;// для root 6  дочерних итоговых pivotRow 
 
             // каждая категория ТПСГ → районные ПСГ той же категории
             foreach (var terrCat in terrCategoryRows)
             {
                 terrCat.Childes = psgItogiRows
-                    .Where(r => r.Category == terrCat.Category)
+                    .Where(r => r.Category.Contains(terrCat.Category))
                     .OrderBy(r => r.Norder)
                     .ToList();
 
-                // ПЧ — дочерние к районным строкам
-                foreach (var psgRow in terrCat.Childes)
+                // ПЧ — дочерние к районным строкам    - РАЗОБРАТЬСЯ ПОПАДАЮТ ЛИ В ТOOLTIPS
+                //      нужны не ПЧ, а итоговые от РПСГ соответствующих категорий
+                foreach (var psgcatRow in terrCat.Childes)
                 {
-                    psgRow.Childes = leafRows
-                        .Where(r => r.PsgId == psgRow.PsgId
-                                    && LeafBelongsToCategory(r.Category, psgRow.Category))
+                    psgcatRow.Childes = psgItogiRows
+                        .Where(r => r.PsgId == psgcatRow.PsgId
+                                    && LeafBelongsToCategory(r.Category, psgcatRow.Category))
                         .OrderBy(r => r.Norder)
                         .ToList();
                 }
             }
 
-            // CellDetails для ТПСГ-строк
+                                                                // CellDetails для ТПСГ-строк
+            // для ROOT - 4 строки  ГПС, другие, ЧПО, ВПО                       (АСФ исключено)
             var rootSources = terrCategoryRows
                 .Where(r => CategoriesForTotal.Contains(r.Category))
                 .ToList();
+
             BuildCellDetailsCustom(root, rootSources);
+
+            //для дочерних - должен получиться список из аналогичных для районных
             foreach (var terrCat in terrCategoryRows)
                 BuildCellDetails(terrCat);
 
@@ -58,21 +63,21 @@ namespace stroevkaI.Services
             var displayRows = new List<PivotRow> { root };
             displayRows.AddRange(terrCategoryRows);
 
-            // 18 строк "ПСГ (всего)" районных
+                                                    // 18 строк "ПСГ (всего)" районных
             var districtTotals = psgItogiRows
                 .Where(r => r.Category == "всего")
                 .OrderBy(r => r.Norder)
                 .ToList();
 
+
+
+            // надо выбрать из каких частей выбраны количества
             foreach (var districtRow in districtTotals)
             {
-                // Childes районного "всего" = его ГПС + другие (для tooltip)
-                var gps = psgItogiRows.FirstOrDefault(r => r.PsgId == districtRow.PsgId && r.Category == "ГПС");
-                var other = psgItogiRows.FirstOrDefault(r => r.PsgId == districtRow.PsgId && r.Category == "другие");
+                var pchRows = allRows.Where(r => ((r.Parent == districtRow.PchId) && (r.Isitog==0)) ).ToList();
 
                 districtRow.Childes = new List<PivotRow>();
-                if (gps != null) districtRow.Childes.Add(gps);
-                if (other != null) districtRow.Childes.Add(other);
+                if (pchRows != null) districtRow.Childes.AddRange(pchRows);
 
                 BuildCellDetails(districtRow);
             }
@@ -106,10 +111,10 @@ namespace stroevkaI.Services
                     if (val == 0) continue;
 
                     // Для ПСГ-строки — имя ПСГ. Для ПЧ-строки — имя ПЧ.
-                    var name = !string.IsNullOrEmpty(child.Псг)
-                               && child.Псг != "Территориальный"
-                        ? child.Псг
-                        : child.Пч;
+                    string name = child.Пч;
+                    if(itog.Псг.ToLower().Contains("террит"))
+                        if(!itog.Category.Contains("всего"))
+                            name = child.Псг;
 
                     details.Add(new DetailItem
                     {
@@ -188,9 +193,7 @@ namespace stroevkaI.Services
             if (otherRow != null)
             {
                 otherRow.Childes = leafRows
-                    .Where(l => l.Category != "ФПС" && l.Category != "ППС"
-                                && l.Category != "ЧПО" && l.Category != "ВПО"
-                                && l.Category != "АСФ")
+                    .Where(l => l.Category != "ФПС" && l.Category != "ППС")
                     .OrderBy(l => l.Norder)
                     .ToList();
             }

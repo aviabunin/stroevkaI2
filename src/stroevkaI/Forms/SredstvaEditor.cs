@@ -19,6 +19,7 @@ namespace stroevkaI.Forms
 
         private Sredstva selectedItem;
         private string selectedState;
+
         private bool isMenuShowing = false;
         private ContextMenuStrip transferContextMenu;
 
@@ -30,6 +31,7 @@ namespace stroevkaI.Forms
         public SredstvaEditor()
         {
             InitializeComponent();
+            dgvSredstva.AutoGenerateColumns = false;
             SubscribeEvents();
             SetupGrid();
             CreateContextMenu();
@@ -114,7 +116,8 @@ namespace stroevkaI.Forms
 
         private void DgvSredstva_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (!isEdit) return;
+            if (!isEdit) 
+                return;
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
             if (isMenuShowing) return;
 

@@ -3,15 +3,16 @@ using System.Reflection;
 using System.Text;
 using MySql.Data.MySqlClient;
 using StorageI.ModelsStroevkaMySql;
+using StorageI.Services;
 
 namespace stroevkaI.Services
 {
     public static class FastPivotLoader
     {
-        public const string ConnString =
-            "server=127.0.0.1;port=3306;user=root;password=Djkjlz1;" +
-            "database=stroevka;Character Set=utf8;Convert Zero Datetime=True;Allow Zero Datetime=True;" +
-            "Pooling=true;MinimumPoolSize=1;MaximumPoolSize=10;SslMode=None;";
+        //public const string ConnString =
+        //    "server=127.0.0.1;port=3306;user=root;password=Djkjlz1;" +
+        //    "database=stroevka;Character Set=utf8;Convert Zero Datetime=True;Allow Zero Datetime=True;" +
+        //    "Pooling=true;MinimumPoolSize=1;MaximumPoolSize=10;SslMode=None;";
 
         // Карта: нормализованное имя колонки → PropertyInfo
         private static readonly Dictionary<string, PropertyInfo> _propMap = BuildPropertyMap();
@@ -21,7 +22,7 @@ namespace stroevkaI.Services
             var sw = Stopwatch.StartNew();
             var result = new List<PivotRow>();
 
-            using var conn = new MySqlConnection(ConnString);
+            using var conn = new MySqlConnection(DbConfig.BuildConnectionString());
             conn.Open();
             var tConnect = sw.ElapsedMilliseconds;
 
@@ -64,7 +65,10 @@ namespace stroevkaI.Services
             var sw = Stopwatch.StartNew();
             var result = new List<PivotRow>();
 
-            using var conn = new MySqlConnection(ConnString);
+            //using var conn = new MySqlConnection(ConnString);
+            using var conn = new MySqlConnection(DbConfig.BuildConnectionString());
+
+
             conn.Open();
             var tConnect = sw.ElapsedMilliseconds;
 

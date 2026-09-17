@@ -9,6 +9,7 @@ using stroevkaI.Services;
 using System.ComponentModel;
 using System.Text;
 using stroevkaI.Services;
+using StorageI.Services;
 
 
 namespace stroevkaI
@@ -16,6 +17,8 @@ namespace stroevkaI
     public partial class Form1 : Form
     {
         #region Параметры программы
+
+        private bool _isRefreshing = false;
 
         private List<PivotRow> _allPivotRows;
         private readonly Dictionary<string, int> _psgNameToId = new();
@@ -108,7 +111,7 @@ namespace stroevkaI
             cmbPsg.Items.Clear();
             _psgNameToId.Clear();
 
-            using var conn = new MySqlConnection(FastPivotLoader.ConnString);
+            using var conn = new MySqlConnection(DbConfig.BuildConnectionString());
             conn.Open();
 
             // "Территориальный" — отдельно, всегда первым
@@ -157,7 +160,7 @@ namespace stroevkaI
         private int GetPsgIdByName(string name)
         {
             // быстрый ADO.NET-запрос
-            using var conn = new MySqlConnection(FastPivotLoader.ConnString);
+            using var conn = new MySqlConnection(DbConfig.BuildConnectionString());
             conn.Open();
             using var cmd = new MySqlCommand(
                 "SELECT id FROM psgstat WHERE name = @n AND used = 1 LIMIT 1", conn);
@@ -318,7 +321,7 @@ namespace stroevkaI
 
 
             PivotTreeBuilder.InvalidateCache(psgName);
-            await InitPivotGridAsync(psgName);
+            //await InitPivotGridAsync(psgName);
 
             HighlightDatafilledRows();
         }
@@ -950,5 +953,48 @@ namespace stroevkaI
                 }
             }
         }
+
+        #region обновление данных
+        private void RefreshData(bool showStatus = true)
+        {
+            if (_isRefreshing) return;
+            _isRefreshing = true;
+            var sw = Stopwatch.StartNew();
+
+            try
+            {
+                // Запомним выбранный ПСГ и текущий скролл
+                string currentPsg = rootPsgName;
+                int? firstVisibleRow = PivotRowGrid.Rows.Count > 0
+                    ? PivotRowGrid.FirstDisplayedScrollingRowIndex
+                    : (int?)null;
+
+                // Перечитываем все строки pivot_rows
+                _allPivotRows = FastPivotLoader.LoadAll();
+                var loadMs = sw.ElapsedMilliseconds;
+
+                // Обновляем отображение (без пересоздания cmbPsg — просто применяем)
+                ShowView(currentPsg);
+                var totalMs = sw.ElapsedMilliseconds;
+
+                // Восстанавливаем скролл
+                if (firstVisibleRow.HasValue && firstVisibleRow.Value < PivotRowGrid.Rows.Count)
+                    PivotRowGrid.FirstDisplayedScrollingRowIndex = firstVisibleRow.Value;
+
+                if (showStatus)
+                    UpdateStatus($"Обновлено за {totalMs} ms (загрузка {loadMs} ms, строк {_allPivotRows.Count})");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"Ошибка обновления: {ex.Message}");
+                Log.Write($"[Refresh] error: {ex}");
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
+        }
+        #endregion
+
     }
 }
