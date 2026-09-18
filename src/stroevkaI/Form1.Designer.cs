@@ -376,16 +376,12 @@
             this.listBoxTools.IntegralHeight = false;
             this.listBoxTools.ItemHeight = 15;
             this.listBoxTools.Items.AddRange(new object[] {
-            "JSON save",
-            "JSON load",
-            "Контроль данных",
-            "TreeBuilder",
-            "Сравнение с БД",
-            "Сравнение всех"});
+            "Обновить"});
             this.listBoxTools.Location = new System.Drawing.Point(3, 3);
             this.listBoxTools.Name = "listBoxTools";
             this.listBoxTools.Size = new System.Drawing.Size(223, 367);
             this.listBoxTools.TabIndex = 1;
+            this.listBoxTools.SelectedIndexChanged += new System.EventHandler(this.ListBoxTools_SelectedIndexChanged);
             // 
             // splitContainer2
             // 

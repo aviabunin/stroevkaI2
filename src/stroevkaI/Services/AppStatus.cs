@@ -22,7 +22,7 @@ namespace stroevkaI.Services
         public string JsonLocalPath { get; set; } = Path.Combine(AppContext.BaseDirectory, "psg_data");
         public string JsonNetworkPath { get; set; } = "";
 
-        public bool IsDatabaseOnline => DatabaseStatus == ResourceStatus.Available;
+        public bool IsDatabaseOnline => true;// DatabaseStatus == ResourceStatus.Available;
         public bool IsNetworkAvailable => NetworkDrives.Values.Any(v => v == ResourceStatus.Available);
     }
 

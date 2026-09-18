@@ -44,7 +44,7 @@ namespace StorageI.Services
             bool remoteOk = TryTcpConnect(RemoteHost, Port, timeoutMs: 700);
 
 //            Host = RemoteHost;// remoteOk ? RemoteHost : LocalHost;
-            Host = remoteOk ? RemoteHost : LocalHost;
+            Host = remoteOk ? RemoteHost : LocalHost;  //TODO  Установить AppStatus. добавить локальный файл.
 
             IsDetected = true;
 

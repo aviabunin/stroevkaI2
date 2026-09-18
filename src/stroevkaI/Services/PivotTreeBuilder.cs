@@ -148,6 +148,8 @@ namespace stroevkaI.Services
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
+            AppStatus appstatus = new AppStatus();//   RefreshAsync
+
             // 1. Все узлы (psgstat — маленькая таблица, её грузим целиком, она нужна для GetPsgNameForNode)
             var allNodes = await _context.Psgstats
                 .AsNoTracking()

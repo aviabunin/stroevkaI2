@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using StorageI.ModelsStroevkaMySql;
+
 
 namespace StorageI.Services
 {
@@ -15,57 +10,47 @@ namespace StorageI.Services
     {
         public class SaveResult
         {
-            public int Inserted { get; set; }
             public int Updated { get; set; }
-            public int Deleted { get; set; }
+            public int Inserted { get; set; }
             public int Unchanged { get; set; }
-            public int Total => Inserted + Updated + Deleted + Unchanged;
+            public int Total => Updated + Inserted + Unchanged;
         }
 
         /// <summary>
-        /// Естественный ключ строки.
+        /// Построчный upsert по pch_id.
+        /// - Существующие строки с изменениями → UPDATE.
+        /// - Существующие без изменений → пропуск.
+        /// - Новые pch_id → INSERT (редко).
+        /// Никаких DELETE.
         /// </summary>
-        private static string GetKey(PivotRow r)
-            => $"{r.PsgId}|{r.Category}|{r.Isitog}|{r.PchId}";
-
-        /// <summary>
-        /// Синхронизирует строки одного ПСГ с БД. Обновляет только изменённые.
-        /// </summary>
-        public static SaveResult SavePivotRows(int psgId, List<PivotRow> newRows)
+        public static SaveResult SavePivotRows(List<PivotRow> newRows)
         {
             var result = new SaveResult();
-            if (newRows == null) newRows = new List<PivotRow>();
+            if (newRows == null || newRows.Count == 0) return result;
 
             using var ctx = new stroevkaContext();
             using var tx = ctx.Database.BeginTransaction();
 
-            // 1. Старые строки этого ПСГ
-            var oldRows = ctx.PivotRows
-                .Where(r => r.PsgId == psgId)
-                .AsNoTracking()
-                .ToList();
+            var newIds = newRows.Select(r => r.PchId).ToList();
 
-            var oldByKey = oldRows
-                .GroupBy(GetKey)
-                .ToDictionary(g => g.Key, g => g.First());
-            var matchedKeys = new HashSet<string>();
+            // Ключевое: AsNoTracking — не попадают в трекер EF
+            var existing = ctx.PivotRows
+                .AsNoTracking()
+                .Where(r => newIds.Contains(r.PchId))
+                .ToDictionary(r => r.PchId ?? 0, r => r);
 
             var toInsert = new List<PivotRow>();
             var toUpdate = new List<PivotRow>();
 
-            // 2. Обходим новые строки
             foreach (var newRow in newRows)
             {
-                newRow.PsgId = psgId;
-                var key = GetKey(newRow);
+                var key = newRow.PchId ?? 0;
 
-                if (oldByKey.TryGetValue(key, out var oldRow))
+                if (existing.TryGetValue(key, out var oldRow))
                 {
-                    matchedKeys.Add(key);
-
-                    if (!AreEqual(oldRow, newRow))
+                    if (HasChanges(oldRow, newRow))
                     {
-                        newRow.Id = oldRow.Id;               // сохраняем Id
+                        newRow.Id = oldRow.Id;                    // ключ из БД
                         newRow.LastModified = DateTime.Now;
                         toUpdate.Add(newRow);
                     }
@@ -76,40 +61,34 @@ namespace StorageI.Services
                 }
                 else
                 {
-                    newRow.Id = 0;                           // БД выдаст
+                    newRow.Id = 0;
                     newRow.LastModified = DateTime.Now;
                     toInsert.Add(newRow);
                 }
             }
 
-            // 3. Удаляем старые, которых нет в новых
-            var toDelete = oldRows
-                .Where(r => !matchedKeys.Contains(GetKey(r)))
-                .ToList();
+            if (toUpdate.Count > 0)
+                ctx.PivotRows.UpdateRange(toUpdate);              // UpdateRange вместо foreach Update
 
-            // 4. Применяем
-            if (toDelete.Count > 0) ctx.PivotRows.RemoveRange(toDelete);
-            if (toInsert.Count > 0) ctx.PivotRows.AddRange(toInsert);
-            if (toUpdate.Count > 0) ctx.PivotRows.UpdateRange(toUpdate);
+            if (toInsert.Count > 0)
+                ctx.PivotRows.AddRange(toInsert);
 
             ctx.SaveChanges();
             tx.Commit();
 
-            result.Inserted = toInsert.Count;
             result.Updated = toUpdate.Count;
-            result.Deleted = toDelete.Count;
+            result.Inserted = toInsert.Count;
             return result;
         }
 
         /// <summary>
         /// Сравнивает все persistent-колонки, кроме служебных.
         /// </summary>
-        private static bool AreEqual(PivotRow a, PivotRow b)
+        private static bool HasChanges(PivotRow oldRow, PivotRow newRow)
         {
             foreach (var prop in typeof(PivotRow).GetProperties(BindingFlags.Public | BindingFlags.Instance))
             {
                 if (!prop.CanRead) continue;
-                // пропускаем [NotMapped] (Childes, CellDetails)
                 if (prop.GetCustomAttribute<NotMappedAttribute>() != null) continue;
 
                 var name = prop.Name;
@@ -117,11 +96,12 @@ namespace StorageI.Services
                 if (name == nameof(PivotRow.LastModified)) continue;
                 if (name == nameof(PivotRow.SourceVersion)) continue;
 
-                var va = prop.GetValue(a);
-                var vb = prop.GetValue(b);
-                if (!Equals(va, vb)) return false;
+                var vOld = prop.GetValue(oldRow);
+                var vNew = prop.GetValue(newRow);
+
+                if (!Equals(vOld, vNew)) return true;
             }
-            return true;
+            return false;
         }
     }
 }
