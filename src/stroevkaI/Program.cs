@@ -35,9 +35,6 @@ namespace stroevkaI
 
             var config = AppConfig.Load();
 
-
-
-
             switch (config.Mode)
             {
                 case AppMode.Standalone:

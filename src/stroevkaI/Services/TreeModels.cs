@@ -12,6 +12,7 @@ namespace stroevkaI.Models
         public string displayName { get; set; }                 // Наименование на экране
         public string Category { get; set; }                    // ППС,ФПС, ДПО - для листьев gps,main...  для внутр узлов
         public int ParentId { get; set; }                       //  Id родителя
+        public int PsgId { get; set; }                          // Id Psg in pivotRow
         public List<ReportNode> Children { get; set; } = new List<ReportNode>();  // дочки
         public int Isitog { get; set; }                       //  признак итогой строки
         public int Norder { get; set; }

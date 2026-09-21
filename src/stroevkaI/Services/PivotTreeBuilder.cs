@@ -14,6 +14,7 @@ namespace stroevkaI.Services
 {
     public class PivotTreeBuilder
     {
+        #region Параметры класса, конструктор и тест
         // ---------- КЭШ ----------
         private static readonly ConcurrentDictionary<string, List<PivotRow>> _pivotCache = new();
         private static readonly ConcurrentDictionary<string, DateTime> _cacheTime = new();
@@ -55,10 +56,11 @@ namespace stroevkaI.Services
             return rows;
         }
 
+
         // ==========================================================
         // ЗАГРУЗКА ДАННЫХ ДЛЯ ОДНОГО ПСГ  123
         // ==========================================================
-        private async Task<PchData> LoadPchDataAsync(string psgName)
+        private async Task<PchData> LoadPsgDataAsync(string psgName)
         {
             var data = new PchData();
 
@@ -72,14 +74,18 @@ namespace stroevkaI.Services
             if (psgRow == null)
                 return data;
 
-            int psgId = psgRow.Id;
+            int pchId = psgRow.Id;  //это реальный Id в psgdata and in psgstat
+            int psgId = 0;
+            if (psgRow.Parent !=null)  // TODO исправлено
+                psgId = (int)psgRow.Parent;  //это Id родителя  
+               
 
             if (_appStatus.Status.IsDatabaseOnline)
             {
                 // ID подразделений этого ПСГ (сам ПСГ + его прямые дети-ПЧ)
                 var subdivIds = await _context.Psgstats
                     .AsNoTracking()
-                    .Where(p => p.Used == 1 && (p.Id == psgId || p.Parent == psgId))
+                    .Where(p => p.Used == 1 && (p.Id == pchId || p.Parent == pchId))//TODO Разобраться
                     .Select(p => p.Id)
                     .ToListAsync();
 
@@ -125,14 +131,14 @@ namespace stroevkaI.Services
                     .ToDictionary(g => g.Key, g => g.FirstOrDefault());
 
                 // Обновляем локальный кэш JSON — на случай офлайна
-                data.PchId = psgId;
+                data.PchId = pchId;
                 data.LastModified = DateTime.Now;
                 try { await _jsonService.SaveDataAsync(data); } catch { /* не критично */ }
             }
             else
             {
                 // Офлайн — читаем JSON
-                data = await _jsonService.LoadDataAsync(psgId) ?? new PchData { PchId = psgId };
+                data = await _jsonService.LoadDataAsync(pchId) ?? new PchData { PchId = pchId };
 
                 var nachkarsList = data.ContactsList ?? new List<Contact>();
                 nachkarBySubdiv = new Dictionary<int, CacheNachkar>();
@@ -140,6 +146,7 @@ namespace stroevkaI.Services
 
             return data;
         }
+        #endregion
 
         // ==========================================================
         // ПОСТРОЕНИЕ ДЕРЕВА
@@ -156,7 +163,10 @@ namespace stroevkaI.Services
                 .Where(p => p.Used == 1)
                 .ToListAsync();
 
-            _psgDict = allNodes.ToDictionary(p => p.Id, p => p);
+            _psgDict = allNodes.ToDictionary(p => p.Id, p => p);// узнать из чего общ колич
+                                                                // 372 = 309 ПЧ +7 ТПСГ +   (372 - 316 - 56 = 2  - это ЧПО) 
+                                                                // 18 всего +18 ГПС + 18 другие
+
 
             // 2. Находим сам ПСГ по имени
             var psgRow = allNodes.FirstOrDefault(p => p.Name.Trim() == psgName);
@@ -189,7 +199,7 @@ namespace stroevkaI.Services
             var nodesForTree = allNodes.Where(n => allowedIds.Contains(n.Id)).ToList();
 
             // 5. Данные — только по этому ПСГ (уже так и было)
-            var data = await LoadPchDataAsync(psgName);
+            var data = await LoadPsgDataAsync(psgName);
 
             // 6. Группировки
             var sredstvaBySubdiv = (data.SredstvaList ?? new())
@@ -231,7 +241,8 @@ namespace stroevkaI.Services
                     Name = psg.Name,
                     displayName = psg.Displayname,
                     Category = psg.Garntype ?? "",
-                    ParentId = psg.Parent ?? 0,
+                    ParentId = psg.Parent ?? 0,  // Это и есть psgId - в старой программе так
+                    PsgId = psg.Parent ?? 0,     // пока просто дублируем, чтобы было знакомое обозначение
                     Isitog = psg.Isitog ?? 0,
                     Norder = (int)psg.Norder,
                     RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
@@ -393,7 +404,7 @@ namespace stroevkaI.Services
                 ? rootNode.Children.Where(c => c.Children.Any()).ToList()
                 : new List<ReportNode> { rootNode };
 
-            var allPsgRows = new List<PivotRow>();
+            var allPsgRows = new List<PivotRow>();// здесь только 18 ПСГ - у них дети, а у итоговых 6 - нет детей
             foreach (var psgNode in psgNodes)
             {
                 var psgRows = ComputePsgSummaryRows(psgNode);
@@ -446,6 +457,7 @@ namespace stroevkaI.Services
             _pivotCache[psgName] = result;
             _cacheTime[psgName] = DateTime.Now;
 
+            var rez1= result.OrderBy(c => c.Norder).ToList();
             return result.OrderBy(c=>c.Norder).ToList();
         }
 
@@ -512,6 +524,7 @@ namespace stroevkaI.Services
                 PchId = rootNode.Id,
                 Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
                 Isitog = 1,
+                PsgId= 11,
 
             };
             if (displayNames.ContainsKey(categoryName))
@@ -678,6 +691,7 @@ namespace stroevkaI.Services
                 PchId = psgNode.Id,
                 Norder = psgNode.Norder,
                 Parent = psgNode.ParentId,
+                PsgId = psgNode.PsgId,
                 Isitog = 1,
             };
             #region Устанавливаем Norder и ПЧ в зависимости от CategoryName   
@@ -735,6 +749,9 @@ namespace stroevkaI.Services
                 Parent = leaf.ParentId,     // parentId(psgstat) = parent(psgdata) 
                 Norder = leaf.Norder,
                 Isitog = 0,
+                PsgId = leaf.PsgId   // так правильнее , т.к. parent может быть и другой
+                //TODO psg_id сформиpaровать
+                //id?
             };
 
             // Заполняем числовые поля (как было)
@@ -775,6 +792,7 @@ namespace stroevkaI.Services
                 Parent = psgNode.ParentId,
                 Norder = psgNode.Norder,
                 Isitog = 1,
+                PsgId = psgNode.PsgId
             };
 
             // Суммируем все числовые свойства из переданных строк
@@ -908,8 +926,6 @@ namespace stroevkaI.Services
         }
 
         Dictionary<string, ColumnConfig> columnConfigs;
-
-
 
         private void InitializeColumnConfigs()
         {

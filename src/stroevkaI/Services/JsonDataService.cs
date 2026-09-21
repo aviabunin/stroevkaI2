@@ -47,6 +47,7 @@ namespace stroevkaI.Services
     public class PchData
     {
         public int PchId { get; set; }
+        public int PsgId { get; set; }
         public DateTime LastModified { get; set; }
         public List<Sredstva> SredstvaList { get; set; } = new();
         public List<Sostav> SostavList { get; set; } = new();
