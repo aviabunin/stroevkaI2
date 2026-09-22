@@ -715,7 +715,7 @@ namespace stroevkaI.Services
                 Category = categoryName,
                 PchId = psgNode.Id,
                 Norder = psgNode.Norder,
-                Parent = psgNode.ParentId,
+                Parent = psgNode.Id,
                 PsgId = psgNode.PsgId,
                 Isitog = 1,
             };
