@@ -247,7 +247,8 @@ namespace stroevkaI.Services
                     Norder = (int)psg.Norder,
                     RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
                 };
-
+                //if (node.Id == 0)
+                //    node.Id = 9999;
                 if (psg.Isitog == 0)
                 {
                     // sredstva
@@ -490,6 +491,16 @@ namespace stroevkaI.Services
         }
         private PivotRow CreateTerritorialRow(ReportNode rootNode, string categoryName, List<PivotRow> rowsToSum)
         {
+            Dictionary<string, int> itogId = new Dictionary<string, int>() {
+             {"всего",11 },
+             {"другие",1745 },
+             {"ФПС",1840},
+             {"ГПС",1746 },
+             {"ЧПО",1886 },
+             {"АСФ",1889 },
+             {"ВПО",1838 }          
+         };
+
             Dictionary<string, string> displayNames = new Dictionary<string, string>() {
              {"всего","Территориальный" },
              {"другие","    другие категории" },
@@ -517,8 +528,12 @@ namespace stroevkaI.Services
             if (rowsToSum == null || !rowsToSum.Any())
                 return null;
 
+            //Найти в psgstat строку с такой категорией и ПСГ=Террит
+
+            
             var row = new PivotRow
             {
+                Id = itogId[categoryName], //TODO добавлено 22-09
                 Псг = "Территориальный",
                 Category = categoryName,
                 PchId = rootNode.Id,
@@ -684,8 +699,18 @@ namespace stroevkaI.Services
              {"ППС",26 }
          };
 
+
+            //найти в psgstat строку с подчинением psgNode и данной категорией 
+            var psgstat_row = _context.Psgstats.Where(c => c.Id == psgNode.Id && c.Garntype.Contains(categoryName)).FirstOrDefault();
+
+            int idr = 0;
+            if (psgstat_row != null)
+                idr = psgstat_row.Id;
+            else 
+                idr = psgNode.Id*10000+Norders[categoryName];// Фиктивное Id , в итогах ПСГ строки нет
             var row = new PivotRow
             {
+                Id = idr,
                 Псг = psgNode.Name,
                 Category = categoryName,
                 PchId = psgNode.Id,
@@ -742,6 +767,7 @@ namespace stroevkaI.Services
         {
             var row = new PivotRow
             {
+                Id = leaf.Id,
                 Псг = GetPsgNameForNode(leaf),
                 Пч = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
                 Category = leaf.Category,
@@ -785,6 +811,7 @@ namespace stroevkaI.Services
         {
             var row = new PivotRow
             {
+                Id = psgNode.Id,
                 Псг = psgNode.Name,
                 Пч = psgNode.Name,
                 Category = "всего",

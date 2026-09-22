@@ -34,24 +34,16 @@ namespace StorageI.ModelsStroevkaMySql
         public virtual DbSet<Sostav> Sostavs { get; set; } = null!;
         public virtual DbSet<Sredstva> Sredstvas { get; set; } = null!;
         public virtual DbSet<Water> Waters { get; set; } = null!;
-        //127.0.0.1
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
             {
-
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-                //optionsBuilder.UseMySQL(
-                //        "server=127.0.0.1;port=3306;user=root;password=Djkjlz1;" +
-                //        "database=stroevka;Character Set=utf8;Convert Zero Datetime=True;Allow Zero Datetime=True;" +
-                //        "SslMode=None;");
-                if (!optionsBuilder.IsConfigured)
-                {
-                    optionsBuilder.UseMySQL(StorageI.Services.DbConfig.BuildConnectionString());
-                }
+                optionsBuilder.UseMySQL("server=localhost;port=3306;user=root;password=Djkjlz1; database=stroevka; Character Set=utf8; Convert Zero Datetime=True; Allow Zero Datetime=True");
             }
         }
-        //10.37.128.123
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ApivotMat>(entity =>
@@ -2578,6 +2570,10 @@ namespace StorageI.ModelsStroevkaMySql
                 entity.Property(e => e.Rank)
                     .HasColumnType("int(11)")
                     .HasColumnName("rank");
+
+                entity.Property(e => e.RowId)
+                    .HasMaxLength(16)
+                    .HasColumnName("row_id");
 
                 entity.Property(e => e.Used)
                     .HasColumnType("int(11)")

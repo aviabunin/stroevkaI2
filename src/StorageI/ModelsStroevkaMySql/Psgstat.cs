@@ -29,6 +29,7 @@ namespace StorageI.ModelsStroevkaMySql
         public int? Rank { get; set; }
         public int? Karaul { get; set; }
         public DateTime Mdate { get; set; }
+        public string? RowId { get; set; }
 
         public virtual Psgstat? ParentNavigation { get; set; }
         public virtual ICollection<Contact> Contacts { get; set; }

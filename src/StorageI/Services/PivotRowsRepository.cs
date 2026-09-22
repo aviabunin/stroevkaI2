@@ -61,7 +61,6 @@ namespace StorageI.Services
                 }
                 else
                 {
-                    newRow.Id = 0;
                     newRow.LastModified = DateTime.Now;
                     toInsert.Add(newRow);
                 }
