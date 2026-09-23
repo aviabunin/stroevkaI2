@@ -986,7 +986,7 @@ namespace stroevkaI
                     
                     using (var editorForm = new PivotRowEditor((int)selectedItem1.Id))
                     {
-                        editorForm.ShowDialog();
+                        editorForm.ShowDialog();//где то надо подписаться
                     }
                     refreshGrid(rootPsgName);
                 }

@@ -9,8 +9,11 @@ using StorageI.Repositories;
 
 namespace stroevkaI.Forms
 {
-    public partial class WatersEditor : UserControl
+    public partial class WatersEditor : UserControl,IDataEditor
     {
+        public event EventHandler DataChanged;
+        public event EventHandler SaveRequested;
+
         private readonly WatersRepository _repository;
         private readonly int _subdivisionId;
         private List<Water> _currentData;
@@ -18,8 +21,8 @@ namespace stroevkaI.Forms
         private System.Windows.Forms.Timer _statusTimer;
         private Label _statusLabel;
 
-        public event EventHandler DataChanged;
-        public event EventHandler SaveRequested;
+
+
 
         public WatersEditor()
         {

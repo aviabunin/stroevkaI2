@@ -9,8 +9,11 @@ using StorageI.Repositories;
 
 namespace stroevkaI.Forms
 {
-    public partial class KostymsEditor : UserControl
+    public partial class KostymsEditor : UserControl,IDataEditor
     {
+        public event EventHandler DataChanged;
+        public event EventHandler SaveRequested;
+
         private readonly KostymsRepository _repository;
         private readonly int _subdivisionId;
         private List<Kostym> _currentData;
@@ -18,8 +21,7 @@ namespace stroevkaI.Forms
         private System.Windows.Forms.Timer _statusTimer;
         private Label _statusLabel;
 
-        public event EventHandler DataChanged;
-        public event EventHandler SaveRequested;
+
 
         public KostymsEditor()
         {

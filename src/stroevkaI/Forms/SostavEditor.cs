@@ -9,8 +9,11 @@ using StorageI.Repositories;
 
 namespace stroevkaI.Forms
 {
-    public partial class SostavEditor : UserControl
+    public partial class SostavEditor : UserControl,IDataEditor
     {
+        public event EventHandler DataChanged;
+        public event EventHandler SaveRequested;
+
         private readonly SostavRepository _repository;
         private readonly int _subdivisionId;
         private readonly string _subdivisionName;
@@ -33,8 +36,7 @@ namespace stroevkaI.Forms
         private const string TOTAL_GROUP = "1 Общие";
 
         // События для связи с формой
-        public event EventHandler DataChanged;
-        public event EventHandler SaveRequested;
+
 
         // Конструктор для дизайнера
         public SostavEditor()

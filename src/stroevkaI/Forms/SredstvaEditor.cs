@@ -8,9 +8,13 @@ using stroevkaI.Models;
 
 namespace stroevkaI.Forms
 {
-    public partial class SredstvaEditor : UserControl
+    public partial class SredstvaEditor : UserControl, IDataEditor
     {
         #region Поля
+
+        public event EventHandler DataChanged;
+        public event EventHandler SaveRequested;
+
         private List<Sredstva> data;
         private List<Sredstva> displayData;
         private bool isEdit = false;
@@ -26,7 +30,7 @@ namespace stroevkaI.Forms
         private int selectedRowIndex = -1;
         #endregion
 
-        public event EventHandler DataChanged;
+
 
         public SredstvaEditor()
         {

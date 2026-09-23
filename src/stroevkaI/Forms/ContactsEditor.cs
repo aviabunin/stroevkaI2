@@ -8,8 +8,11 @@ using StorageI.ModelsStroevkaMySql.Repositories;
 
 namespace stroevkaI.Forms
 {
-    public partial class ContactsEditor : UserControl
+    public partial class ContactsEditor : UserControl,IDataEditor
     {
+        public event EventHandler DataChanged;
+        public event EventHandler SaveRequested;
+
         private readonly ContactRepository _repository;
         private List<Contact> _currentContacts;
 
@@ -26,8 +29,7 @@ namespace stroevkaI.Forms
         private string _currentGarnizonName;
         private bool _showRightPanel = false;
 
-        public event EventHandler DataChanged;
-        public event EventHandler SaveRequested;
+
         public event EventHandler CancelRequested;
 
         public ContactsEditor(int pchId, int karaul)
