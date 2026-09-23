@@ -536,7 +536,7 @@ namespace stroevkaI.Services
                 Id = itogId[categoryName], //TODO добавлено 22-09
                 Псг = "Территориальный",
                 Category = categoryName,
-                PchId = rootNode.Id,
+                PchId = itogId[categoryName],
                 Parent = 11,  // родитель - не важно кто, для порядка поставим Территориальный (он имеет категорию "всего")
                 Isitog = 1,
                 PsgId= 11,
@@ -713,7 +713,7 @@ namespace stroevkaI.Services
                 Id = idr,
                 Псг = psgNode.Name,
                 Category = categoryName,
-                PchId = psgNode.Id,
+                PchId = idr,
                 Norder = psgNode.Norder,
                 Parent = psgNode.Id,
                 PsgId = psgNode.PsgId,
