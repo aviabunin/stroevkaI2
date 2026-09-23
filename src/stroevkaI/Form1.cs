@@ -984,7 +984,7 @@ namespace stroevkaI
 
                     // Сделаем редактор глобально и сразу создать все редакторы с загрузкой данных
                     
-                    using (var editorForm = new PivotRowEditor((int)selectedItem1.PchId))
+                    using (var editorForm = new PivotRowEditor((int)selectedItem1.Id))
                     {
                         editorForm.ShowDialog();
                     }

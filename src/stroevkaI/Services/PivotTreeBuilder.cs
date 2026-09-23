@@ -616,7 +616,7 @@ namespace stroevkaI.Services
                 // Создаём строку для листа (как в CreateLeafRow) и добавляем
                 var leafRow = CreateLeafRow(pch75Leaf);
                 // Если такая строка ещё не добавлена (проверяем по Id), добавляем
-                if (!fpsRows.Any(r => r.PchId == leafRow.PchId))
+                if (!fpsRows.Any(r => r.Id == leafRow.Id))
                     fpsRows.Add(leafRow);
             }
 

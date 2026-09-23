@@ -17,10 +17,10 @@ namespace StorageI.Services
         }
 
         /// <summary>
-        /// Построчный upsert по pch_id.
+        /// Построчный upsert по Id.
         /// - Существующие строки с изменениями → UPDATE.
         /// - Существующие без изменений → пропуск.
-        /// - Новые pch_id → INSERT (редко).
+        /// - Новые Id → INSERT (редко).
         /// Никаких DELETE.
         /// </summary>
         public static SaveResult SavePivotRows(List<PivotRow> newRows)
@@ -31,22 +31,22 @@ namespace StorageI.Services
             using var ctx = new stroevkaContext();
             using var tx = ctx.Database.BeginTransaction();
 
-            var newIds = newRows.Select(r => r.PchId).ToList();
+            var newIds = newRows.Select(r => r.Id).ToList();//pchid -> id
 
             // Ключевое: AsNoTracking — не попадают в трекер EF
             var existing = ctx.PivotRows
                 .AsNoTracking()
-                .Where(r => newIds.Contains(r.PchId))
-                .ToDictionary(r => r.PchId ?? 0, r => r);
+                .Where(r => newIds.Contains(r.Id))
+                .ToDictionary(r => r.Id, r => r);
 
             var toInsert = new List<PivotRow>();
             var toUpdate = new List<PivotRow>();
 
             foreach (var newRow in newRows)
             {
-                var key = newRow.PchId ?? 0;
+                var key = newRow.Id;
 
-                if (existing.TryGetValue(key, out var oldRow))
+                if (existing.TryGetValue((int)key, out var oldRow))
                 {
                     if (HasChanges(oldRow, newRow))
                     {
