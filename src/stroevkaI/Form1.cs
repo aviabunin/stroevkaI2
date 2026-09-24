@@ -79,23 +79,24 @@ namespace stroevkaI
             _columnManager = new ColumnVisibilityManager(PivotRowGrid);
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        private async void Form1_Load(object sender, EventArgs e)
         {
             var sw = Stopwatch.StartNew();
-            void Mark(string stage) => Log.Mark(stage, sw.ElapsedMilliseconds, 0);
+            void Mark(string s) => Log.Mark(s, sw.ElapsedMilliseconds, 0);
 
             Mark("Start");
-
-            // Один раз загружаем все строки pivot_rows
+            // 1. БЫСТРАЯ отрисовка из прямого SQL (то, что у вас уже есть)
             _allPivotRows = FastPivotLoader.LoadAll();
+            
             Mark($"LoadAll ({_allPivotRows.Count})");
-
+            
             // Заполняем cmbPsg — только Территориальный + 18 районных ПСГ
             LoadPsgListFromDb();
             Mark($"LoadPsgList ({cmbPsg.Items.Count})");
 
             // Ставим сохранённый ПСГ
             rootPsgName = Settings.Default.rootGarn;
+
             if (string.IsNullOrEmpty(rootPsgName) || !_psgNameToId.ContainsKey(rootPsgName))
                 rootPsgName = "Территориальный";
 
@@ -104,9 +105,45 @@ namespace stroevkaI
             cmbPsg.SelectedIndex = idx >= 0 ? idx : 0;
             cmbPsg.SelectedIndexChanged += CmbPsg_SelectedIndexChanged;
 
+
+            //...
             ShowView(rootPsgName);
-            Mark($"ShowView({rootPsgName})");
+            Mark($"Fast ShowView({rootPsgName})");
+
+            // 2. ФОНОВАЯ полная загрузка
+            await LoadCacheInBackgroundAsync();
+            Mark("Cache loaded");
+
+            // 3. Перерисовать на «реальных» данных
+            _allPivotRows = AppDataCache.Instance.PivotRows;
+            ShowView(rootPsgName);
+            UpdateStatus($"Обновлено на {AppDataCache.Instance.LastLoadedAt:HH:mm:ss}");
+
+////////////////////////////////////////////
+
+
+
         }
+        private async Task LoadCacheInBackgroundAsync()
+        {
+            UpdateStatus("Загрузка данных...");
+
+            await Task.Run(() =>
+            {
+                try { AppDataCache.Instance.LoadAll(); }
+                catch (Exception ex)
+                {
+                    BeginInvoke(() => MessageBox.Show(this,
+                        $"Ошибка фоновой загрузки: {ex.Message}",
+                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error));
+                }
+            });
+
+            UpdateStatus($"Данные загружены за {AppDataCache.Instance.LastLoadedAt:HH:mm:ss}");
+        }
+
+
+
 
         private void LoadPsgListFromDb()
         {
