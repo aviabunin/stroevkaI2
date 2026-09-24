@@ -15,7 +15,7 @@ namespace stroevkaI.Forms
         public event EventHandler SaveRequested;
 
         private readonly WatersRepository _repository;
-        private readonly int _subdivisionId;
+        private  int _subdivisionId;
         private List<Water> _currentData;
         private bool _isSaving = false;
         private System.Windows.Forms.Timer _statusTimer;
@@ -261,7 +261,11 @@ namespace stroevkaI.Forms
             _currentData = _repository.LoadWaters(_subdivisionId);
             RefreshGrid();
         }
-
+        public void LoadData(int pchId)
+        {
+            _subdivisionId = pchId;
+            LoadData();
+        }
         private void RefreshGrid()
         {
             int selectedId = -1;

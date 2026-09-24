@@ -15,7 +15,7 @@ namespace stroevkaI.Forms
         public event EventHandler SaveRequested;
 
         private readonly SostavRepository _repository;
-        private readonly int _subdivisionId;
+        private  int _subdivisionId;
         private readonly string _subdivisionName;
         private List<Sostav> _currentData;
         private bool _isConstEditEnabled = false;
@@ -153,6 +153,13 @@ namespace stroevkaI.Forms
             };
             Application.Idle += idleHandler;
         }
+
+        public void LoadData(int pchId)
+        {
+            _subdivisionId = pchId;
+            LoadData();
+        }
+
         /// <summary>
         /// Проверяет данные на соответствие формуле при загрузке
         /// </summary>

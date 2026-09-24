@@ -482,6 +482,7 @@
             this.PivotRowGrid.CellPainting += new System.Windows.Forms.DataGridViewCellPaintingEventHandler(this.PivotRowGrid_CellPainting);
             this.PivotRowGrid.CellToolTipTextNeeded += new System.Windows.Forms.DataGridViewCellToolTipTextNeededEventHandler(this.PivotRowGrid_CellToolTipTextNeeded);
             this.PivotRowGrid.CurrentCellDirtyStateChanged += new System.EventHandler(this.PivotRowGrid_CurrentCellDirtyStateChanged);
+            this.PivotRowGrid.SelectionChanged += new System.EventHandler(this.PivotRowGrid_SelectionChanged);
             this.PivotRowGrid.DoubleClick += new System.EventHandler(this.PivotRowGrid_DoubleClick);
             // 
             // dataGridViewTextBoxColumn1
@@ -981,6 +982,7 @@
             this.Name = "Form1";
             this.Text = "Монитор ПСГ";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.Form1_FormClosed);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.panelTop.ResumeLayout(false);
             this.panelTop.PerformLayout();

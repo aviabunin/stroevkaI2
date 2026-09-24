@@ -13,6 +13,12 @@ namespace stroevkaI.Forms
         public event EventHandler DataChanged;
         public event EventHandler SaveRequested;
 
+        private int _currentPchId = -1;
+        private bool _editorsCreated = false;
+
+
+
+
         private int subdivisionId;
         private PivotRow currentRow;
 
@@ -31,23 +37,26 @@ namespace stroevkaI.Forms
         private SostavRepository _sostavRepository;
 
         static DateTime baseDate = new DateTime(2018, 07, 31);
-        static int currentKaraul = ((DateTime.Now.AddHours(-8).Date - baseDate).Days) % 4 + 1;
 
-        public PivotRowEditor()
-        {
-            InitializeComponent();
-            _context = new stroevkaContext();
-            _sostavRepository = new SostavRepository(_context);
-        }
+        //public PivotRowEditor()
+        //{
+        //    InitializeComponent();
+        //    _context = new stroevkaContext();
+        //    _sostavRepository = new SostavRepository(_context);
+        //}
 
+        static int currentKaraul() {  return ((DateTime.Now.AddHours(-8).Date - baseDate).Days) % 4 + 1; }
+
+        public PivotRowEditor() { InitializeComponent(); }
+        public PivotRowEditor(int pchId) : this() { LoadPch(pchId); }
         // Конструктор с subdivisionId (если нужно загрузить PivotRow по id)
-        public PivotRowEditor(int subdivisionId) : this()
-        {
-            this.subdivisionId = subdivisionId;
-            // Здесь можно получить PivotRow из источника, если нужно
-            currentRow = GetPivotRowById(subdivisionId);
-            InitializeEditors();
-        }
+        //public PivotRowEditor(int subdivisionId) : this()
+        //{
+        //    this.subdivisionId = subdivisionId;
+        //    // Здесь можно получить PivotRow из источника, если нужно
+        //    currentRow = GetPivotRowById(subdivisionId);
+        //    InitializeEditors();
+        //}
         private readonly List<IDataEditor> _children = new();
 
         private void Attach(IDataEditor ed)
@@ -87,11 +96,89 @@ namespace stroevkaI.Forms
             DetachAll();
             base.OnFormClosed(e);
         }
-    
+        // Меняем ПЧ, данные которой хотим редактировать
+        //public void LoadPch(int pchId) {
+        //    this.subdivisionId = pchId;
+        //    // Здесь можно получить PivotRow из источника, если нужно
+        //    currentRow = GetPivotRowById(pchId);
+        //    InitializeEditors();
+        //}
+        /// <summary>
+        /// Открыть/переключиться на указанную ПЧ.
+        /// Первый вызов — создаёт дочерние редакторы,
+        /// последующие — перезагружают данные в них.
+        /// </summary>
+        public void LoadPch(int pchId)
+        {
+            if (pchId <= 0) return;
+            if (pchId == _currentPchId && _editorsCreated) return;
 
+            _currentPchId = pchId;
+            Text = $"Редактор ПЧ {pchId}";
 
-    // Заглушка для получения PivotRow по id (реализуйте при необходимости)
-    private PivotRow GetPivotRowById(int id)
+            if (!_editorsCreated)
+            {
+                CreateEditors(pchId);
+                _editorsCreated = true;
+            }
+            else
+            {
+                ReloadEditors(pchId);
+            }
+        }
+        private void CreateEditors(int pchId)
+        {
+            // Здесь создаём один раз всех детей и подписываемся на их события
+            sredstvaEditor = new SredstvaEditor(pchId) { Dock = DockStyle.Fill };
+            sredstvaEditor.DataChanged += OnChildDataChanged;
+            sredstvaEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("Средства", sredstvaEditor);
+
+            contactsEditor = new ContactsEditor(pchId, currentKaraul()) { Dock = DockStyle.Fill };
+            contactsEditor.DataChanged += OnChildDataChanged;
+            contactsEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("Контакты", contactsEditor);
+
+            sostavEditor = new SostavEditor(pchId) { Dock = DockStyle.Fill };
+            sostavEditor.DataChanged += OnChildDataChanged;
+            sostavEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("Состав", sostavEditor);
+
+            watersEditor = new WatersEditor(pchId) { Dock = DockStyle.Fill };
+            watersEditor.DataChanged += OnChildDataChanged;
+            watersEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("Вода", watersEditor);
+
+            penasEditor = new PenasEditor(pchId) { Dock = DockStyle.Fill };
+            penasEditor.DataChanged += OnChildDataChanged;
+            penasEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("Пена", penasEditor);
+
+            sizodsEditor = new SizodsEditor(pchId) { Dock = DockStyle.Fill };
+            sizodsEditor.DataChanged += OnChildDataChanged;
+            sizodsEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("СИЗОД", sizodsEditor);
+
+            kostymsEditor = new KostymsEditor(pchId) { Dock = DockStyle.Fill };
+            kostymsEditor.DataChanged += OnChildDataChanged;
+            kostymsEditor.SaveRequested += OnChildSaveRequested;
+            PutInTab("Костюмы", kostymsEditor);
+        }
+
+        private void ReloadEditors(int pchId)
+        {
+            // У каждого редактора должен быть публичный метод загрузки по pchId
+            sredstvaEditor?.LoadSredstvaById(pchId);
+            contactsEditor?.LoadContacts(pchId);
+            sostavEditor?.LoadData(pchId);
+            watersEditor?.LoadData(pchId);
+            penasEditor?.LoadData(pchId);
+            sizodsEditor?.LoadData(pchId);
+            kostymsEditor?.LoadData(pchId);
+        }
+
+        // Заглушка для получения PivotRow по id (реализуйте при необходимости)
+        private PivotRow GetPivotRowById(int id)
         {
             // Например, можно запросить из списка или из БД
             // Если не нужно, оставьте возврат null или нового объекта
@@ -130,7 +217,7 @@ namespace stroevkaI.Forms
             Attach(sredstvaEditor);
             PutInTab("Средства", sredstvaEditor);
 
-            contactsEditor = new ContactsEditor(pchId, currentKaraul) { Dock = DockStyle.Fill };
+            contactsEditor = new ContactsEditor(pchId, currentKaraul()) { Dock = DockStyle.Fill };
             Attach(contactsEditor);
             PutInTab("Контакты", contactsEditor);
 
@@ -214,7 +301,7 @@ namespace stroevkaI.Forms
             
             
 
-            contactsEditor = new ContactsEditor(pchId, currentKaraul) { Dock = DockStyle.Fill };
+            contactsEditor = new ContactsEditor(pchId, currentKaraul()) { Dock = DockStyle.Fill };
 
             contactsEditor.DataChanged += (s, e) => this.Text = currentRow?.Пч + " (контакты изменены)";
             contactsEditor.SaveRequested += (s, e) => this.Text = currentRow?.Пч + " (сохранено)";

@@ -57,6 +57,8 @@ namespace stroevkaI.Forms
             SetRightPanelVisible(false);
         }
 
+
+
         private void SetupDataGridViews()
         {
             // --- Верхний грид - Контакты (только 3 колонки) ---
@@ -166,6 +168,11 @@ namespace stroevkaI.Forms
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+        public void LoadContacts(int pchId) {
+            _currentSubdivisionId = pchId;
+            LoadContacts();
+        }
+
 
         private void RefreshContactsGrid()
         {

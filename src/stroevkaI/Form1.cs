@@ -18,6 +18,8 @@ namespace stroevkaI
     {
         #region Параметры программы
 
+        PivotRowEditor _pivotEditor;
+        public event EventHandler DataChanged;
         private bool _isRefreshing = false;
 
         private List<PivotRow> _allPivotRows;
@@ -964,33 +966,23 @@ namespace stroevkaI
 
         private void PivotRowGrid_DoubleClick(object sender, EventArgs e)
         {
-            if (PivotRowGrid.CurrentRow != null)
-            {
-                selectedItem1 = (PivotRow)PivotRowGrid.CurrentRow.DataBoundItem;
-                if (selectedItem1 != null)
-                {
-                    #region По двойному клику на ПСГ - выбрать его вместо ТПСГ
-                    if (selectedItem1.Isitog == 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
-                    {
-                        var str = selectedItem1.Псг;
-                        if (cmbPsg.Items.Contains(str))
-                            //lastChoose = cmbPsg.Text;
-                            //if (str == cmbPsg.Text)
-                            //    str = "Территориальный"; // если клик на уже выбранном ПСГ то возврат к Территориальному
-                            cmbPsg.Text = str;
-                        return;
-                    }
-                    #endregion
+            if (PivotRowGrid.CurrentRow?.DataBoundItem is not PivotRow row) return;
 
-                    // Сделаем редактор глобально и сразу создать все редакторы с загрузкой данных
-                    
-                    using (var editorForm = new PivotRowEditor((int)selectedItem1.Id))
-                    {
-                        editorForm.ShowDialog();//где то надо подписаться
-                    }
-                    refreshGrid(rootPsgName);
-                }
+            selectedItem1 = (PivotRow)PivotRowGrid.CurrentRow.DataBoundItem;
+            #region Если строка не итоговая, то открываем(обновляем) редактор ПЧ 
+            if (row.Isitog != 1)//если строка итогов = и это районный ПСГ, то изменить выбор в combobox
+            {
+                OpenPivotEditor((int)selectedItem1.Id);
+                return;
             }
+            #endregion
+            #region По двойному клику на ПСГ - выбрать его вместо ТПСГ
+            var str = row.Псг;
+            if (!string.IsNullOrEmpty(str) && cmbPsg.Items.Contains(str))
+                cmbPsg.Text = str;
+            return;                   
+            #endregion                              
+            
         }
 
         private void ЛСtoolStrip_Click(object sender, EventArgs e)
@@ -1066,7 +1058,57 @@ namespace stroevkaI
             }
         }
         #endregion
+        private void OpenPivotEditor(int pchId)
+        {
+            if (_pivotEditor == null || _pivotEditor.IsDisposed)
+            {
+                _pivotEditor = new PivotRowEditor(pchId);
+                _pivotEditor.FormClosed += PivotEditor_FormClosed;
+                _pivotEditor.DataChanged += PivotEditor_DataChanged;
+                _pivotEditor.Show(this);           // <— не ShowDialog, не using
+            }
+            else
+            {
+                _pivotEditor.LoadPch(pchId);       // просто перезагрузить данные
+                if (!_pivotEditor.Visible) _pivotEditor.Show(this);
+                _pivotEditor.BringToFront();
+            }
+            //if (editorForm == null)
+            //{
+            //    editorForm = new PivotRowEditor(subdiv_Id);
+            //    editorForm.DataChanged += OnDataChanged;
+            //    editorForm.Show();
+            //    editorForm.BringToFront();
+            //}
+            //else {
+           // _pivotEditor.setSubdivId(subdiv_Id);// просто обновляем данные в редакторе
+            //}
+        }
+        private void PivotEditor_DataChanged(object sender, EventArgs e) {
+            // тут ваш пересчёт: InvalidateAllCache ? RecalculatePivotRowsAsync ? ShowView
+            PivotTreeBuilder.InvalidateAllCache();
+            _ = RecalculatePivotRowsAsync();     // осторожно с await в event — см. ниже
+        }
+        
+        private void PivotEditor_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            _pivotEditor.DataChanged -= PivotEditor_DataChanged;
+            base.OnFormClosed(e);
+        }
+        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
+        {
+           // Пока неясно нужно ли - это более простой путь вроде как
+            //base.OnFormClosed(e);
+        }
 
+        private void PivotRowGrid_SelectionChanged(object sender, EventArgs e)
+        {
 
+            if (_pivotEditor == null || _pivotEditor.IsDisposed) return;
+            if (PivotRowGrid.CurrentRow?.DataBoundItem is not PivotRow row) return;
+            if (row.Isitog == 1) return;              // не переключаемся на итоги
+
+            _pivotEditor.LoadPch((int)row.Id);
+        }
     }
 }

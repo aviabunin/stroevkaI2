@@ -275,6 +275,52 @@ namespace StorageI.ModelsStroevkaMySql
                 .ToList();
         }
 
+        public static List<Sostav> LoadSostav(int subdivisionId)
+        {
+            return context.Sostavs
+                .Where(s => s.SubdivisionId == subdivisionId)
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Sizod> LoadSizods(int subdivisionId)
+        {
+            return context.Sizods
+                .Where(s => s.SubdivisionId == subdivisionId)
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Pena> LoadPenas(int subdivisionId)
+        {
+            return context.Penas
+                .Where(s => s.SubdivisionId == subdivisionId)
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Contact> LoadContacts(int subdivisionId)
+        {
+            return context.Contacts
+                 .Where(s => s.SubdivisionId == subdivisionId)
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Water> LoadWaters(int subdivisionId)
+        {
+            return context.Waters
+                .Where(s => s.SubdivisionId == subdivisionId)
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+        public static List<Kostym> LoadKostyms(int subdivisionId)
+        {
+            return context.Kostyms
+                .Where(s => s.SubdivisionId == subdivisionId)
+                .OrderBy(s => s.Norder)
+                .ToList();
+        }
+
+
+
+
         /// <summary>
         /// Получение ПЧ по ID
         /// </summary>
@@ -373,9 +419,6 @@ namespace StorageI.ModelsStroevkaMySql
                 .OrderBy(v => v)
                 .ToList();
         }
-
-
- 
         /// <summary>
         /// Возвращает список из таблицы Contacts
         /// обращение из вызывающей программы  FireEquipsPivotRepository.GetContacts(id,karaul)
@@ -405,10 +448,6 @@ namespace StorageI.ModelsStroevkaMySql
             var v = context.Contacts.Where(c => c.SubdivisionId == garn_id && c.Karaul == 1).ToList();
             return v;// context.FireEquipsPivots.ToList();
         }
-
-
-
-
 
         public static Psg GetPsgByName(string psgName)
         {
@@ -462,6 +501,4 @@ namespace StorageI.ModelsStroevkaMySql
         }
     }
 }
-//UNION ALL
-//SELECT
-//  'asf' AS `asf`
+

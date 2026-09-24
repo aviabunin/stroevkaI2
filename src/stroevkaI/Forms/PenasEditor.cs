@@ -15,7 +15,7 @@ namespace stroevkaI.Forms
         public event EventHandler SaveRequested;
 
         private readonly PenasRepository _repository;
-        private readonly int _subdivisionId;
+        private  int _subdivisionId;
         private List<Pena> _currentData;
         private bool _isSaving = false;
         private System.Windows.Forms.Timer _statusTimer;
@@ -265,6 +265,11 @@ namespace stroevkaI.Forms
             if (_repository == null) return;
             _currentData = _repository.LoadPenas(_subdivisionId);
             RefreshGrid();
+        }
+        public void LoadData(int pchId)
+        {
+            _subdivisionId = pchId;
+            LoadData();
         }
 
         private void RefreshGrid()

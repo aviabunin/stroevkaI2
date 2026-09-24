@@ -336,12 +336,6 @@ namespace stroevkaI.Forms
         {
             subdivisionId = _pchId;
             LoadSredstva();
-            //currentPch = _currentPch;
-            //if (currentPch != null)
-            //{
-            //    subdivisionId = (int)currentPch.PchId;
-            //    LoadSredstva();
-            //}
         }
 
         public void LoadSredstvaById(int _subdivisionId)
