@@ -14,8 +14,8 @@ namespace stroevkaI.Services
             //var leafRows = allRows.Where(r => r.Isitog == 1  && !r.Псг.ToLower().Contains("террит")).ToList();//Здесь выбрать только итоги для районных
 
             //root - корень дерева - террит ПСГ PivotRow
-            var root = terrRows.FirstOrDefault(r => r.Parent == 0)
-                    ?? terrRows.FirstOrDefault(r => r.Category == "всего");
+            var root = terrRows.FirstOrDefault(r => r.Id == 11);
+                    //?? terrRows.FirstOrDefault(r => r.Category == "всего");
             if (root == null) return new List<PivotRow>();
 
             // получим строки PivotRow для каждой категории - всего 6 строк
@@ -85,6 +85,22 @@ namespace stroevkaI.Services
             displayRows.AddRange(districtTotals);
 
             return displayRows;
+        }
+
+        private int ResolvePsgId(Psgstat item, Dictionary<int, Psgstat> dict)
+        {
+            if (item.Id == 11) return 11;
+            if (item.Parent == 11) return item.Id;   // сам район
+
+            // ПЧ или районная категорийная строка — поднимаемся к району
+            var current = item;
+            while (current.Parent.HasValue && current.Parent.Value != 11)
+            {
+                if (!dict.TryGetValue(current.Parent.Value, out current))
+                    return 0;
+            }
+            // current — это уже узел, чей Parent = 11 → это район
+            return current.Id == 11 ? 11 : current.Id;
         }
         /// <summary>
         /// Стандартный вариант: источники = itog.Childes.

@@ -242,11 +242,26 @@ namespace stroevkaI.Services
                     displayName = psg.Displayname,
                     Category = psg.Garntype ?? "",
                     ParentId = psg.Parent ?? 0,  // Это и есть psgId - в старой программе так
-                    PsgId = psg.Parent ?? 0,     // пока просто дублируем, чтобы было знакомое обозначение
+                    
                     Isitog = psg.Isitog ?? 0,
                     Norder = (int)psg.Norder,
                     RawData = new Dictionary<string, Dictionary<string, Dictionary<string, decimal>>>()
                 };
+                //node.ParentId = psg.Parent ?? 0;
+                //node.PsgId = node.ParentId;
+                if (psg.Parent != null)
+                {
+                    node.PsgId = (int)psg.Parent;
+                    node.ParentId = (int)psg.Parent;
+                }
+                else
+                {
+                    node.PsgId = 11;
+                    node.ParentId = 0;
+                }
+                // PsgId: если это ТПСГ (11) — PsgId=11. Иначе — идём вверх по parent, пока не найдём
+                // строку с parent = 11. Её Id — это и есть Id района.
+                node.PsgId = ResolvePsgId(psg, _psgDict);
                 //if (node.Id == 0)
                 //    node.Id = 9999;
                 if (psg.Isitog == 0)
@@ -365,7 +380,21 @@ namespace stroevkaI.Services
 
             return root;
         }
+        private int ResolvePsgId(Psgstat item, Dictionary<int, Psgstat> dict)
+        {
+            if (item.Id == 11) return 11;
+            if (item.Parent == 11) return item.Id;   // сам район
 
+            // ПЧ или районная категорийная строка — поднимаемся к району
+            var current = item;
+            while (current.Parent.HasValue && current.Parent.Value != 11)
+            {
+                if (!dict.TryGetValue(current.Parent.Value, out current))
+                    return 0;
+            }
+            // current — это уже узел, чей Parent = 11 → это район
+            return current.Id == 11 ? 11 : current.Id;
+        }
         // ==========================================================
         // ГЕНЕРАЦИЯ PivotRow (остаётся почти без изменений, но без
         // загрузки всех данных — она уже сделана в BuildTreeAsync)

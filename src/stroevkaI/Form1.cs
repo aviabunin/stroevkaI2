@@ -109,7 +109,7 @@ namespace stroevkaI
             //...
             ShowView(rootPsgName);
             Mark($"Fast ShowView({rootPsgName})");
-            return;
+            //return;
             // 2. ФОНОВАЯ полная загрузка
             await LoadCacheInBackgroundAsync();
             Mark("Cache loaded");
@@ -118,10 +118,6 @@ namespace stroevkaI
             _allPivotRows = AppDataCache.Instance.PivotRows;
             ShowView(rootPsgName);
             UpdateStatus($"Обновлено на {AppDataCache.Instance.LastLoadedAt:HH:mm:ss}");
-
-////////////////////////////////////////////
-
-
 
         }
         private async Task LoadCacheInBackgroundAsync()
