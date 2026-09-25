@@ -650,26 +650,26 @@ namespace stroevkaI.Services
             rows.Add(CreateCategoryRow(psgNode, "другие", otherLeaves));
             // 2. другие
             var otherLeaves1 = leavesByType.Where(kv => kv.Key != "ФПС" && kv.Key != "ППС" && kv.Key != "АСФ").SelectMany(kv => kv.Value).ToList();
-            var другиеПСГRow = CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves);
+            var другиеПСГRow = CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves1);
             rows.Add(другиеПСГRow);// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
                                    // 3. всего
             var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList());
 
 
-            var ВПО_ЧПО_АСФrows = new List<PivotRow>();
-            // 4. ВПО, ЧПО, АСФ
-            foreach (var cat in new[] { "ВПО", "ЧПО", "АСФ" })
+            var ЧПО_АСФrows = new List<PivotRow>();
+            // 4. ЧПО, АСФ
+            foreach (var cat in new[] { "ЧПО", "АСФ" })
             {
                 if (leavesByType.TryGetValue(cat, out var catLeaves))
                 {
                     var r = CreateCategoryRow(psgNode, cat, catLeaves);
-                    ВПО_ЧПО_АСФrows.Add(r);
+                    ЧПО_АСФrows.Add(r);
                 }
             }
-            rows.AddRange(ВПО_ЧПО_АСФrows);
+            rows.AddRange(ЧПО_АСФrows);
             //Сформировать строку "всего" для районного ПСГ и занести все предыдущие итоговые в childes
             всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow, другиеПСГRow });
-            всегоRow.Childes.AddRange(ВПО_ЧПО_АСФrows);
+            всегоRow.Childes.AddRange(ЧПО_АСФrows);
 
             rows.Add(всегоRow);
             return rows;

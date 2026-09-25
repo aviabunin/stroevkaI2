@@ -109,7 +109,7 @@ namespace stroevkaI
             //...
             ShowView(rootPsgName);
             Mark($"Fast ShowView({rootPsgName})");
-
+            return;
             // 2. ФОНОВАЯ полная загрузка
             await LoadCacheInBackgroundAsync();
             Mark("Cache loaded");
