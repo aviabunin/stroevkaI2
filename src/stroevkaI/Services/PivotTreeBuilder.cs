@@ -653,25 +653,34 @@ namespace stroevkaI.Services
             var другиеПСГRow = CreateCategoryRow(psgNode, "другиеПСГ", otherLeaves1);
             rows.Add(другиеПСГRow);// это другие для ПСГ (не территориального, т.к. в том ВПО,ЧПО отдельно)
                                    // 3. всего
-            var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другие").ToList());
+            var всегоRow = CreateTotalRow(psgNode, rows.Where(r => r.Category == "ГПС" || r.Category == "другиеПСГ").ToList());
 
+            // ВПО
+            var vpoLeaves = leavesByType.Where(kv => kv.Key == "ВПО").SelectMany(kv => kv.Value).ToList();
+            var vpoПСГrow = CreateCategoryRow(psgNode, "ВПО", vpoLeaves);
+            rows.Add(vpoПСГrow);
 
-            var ЧПО_АСФrows = new List<PivotRow>();
-            // 4. ЧПО, АСФ
-            foreach (var cat in new[] { "ЧПО", "АСФ" })
-            {
-                if (leavesByType.TryGetValue(cat, out var catLeaves))
-                {
-                    var r = CreateCategoryRow(psgNode, cat, catLeaves);
-                    ЧПО_АСФrows.Add(r);
-                }
+            PivotRow? chpoПСГrow = null;
+            var chpoLeaves = leavesByType.Where(kv => kv.Key == "ЧПО").SelectMany(kv => kv.Value).ToList();
+            if((chpoLeaves !=null) && (chpoLeaves.Count > 0)){ 
+                chpoПСГrow = CreateCategoryRow(psgNode, "ЧПО", chpoLeaves);
+                rows.Add(chpoПСГrow);
             }
-            rows.AddRange(ЧПО_АСФrows);
-            //Сформировать строку "всего" для районного ПСГ и занести все предыдущие итоговые в childes
-            всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow, другиеПСГRow });
-            всегоRow.Childes.AddRange(ЧПО_АСФrows);
 
+            PivotRow? asfПСГrow = null;
+            var asfLeaves = leavesByType.Where(kv => kv.Key == "АСФ").SelectMany(kv => kv.Value).ToList();
+            if ((asfLeaves != null) && (chpoLeaves.Count > 0))
+            {
+                asfПСГrow = CreateCategoryRow(psgNode, "АСФ", chpoLeaves);
+                rows.Add(asfПСГrow);
+            }
+            всегоRow.Childes.AddRange(new List<PivotRow> { всегоПСГrow, другиеПСГRow});
+            if (chpoПСГrow != null)
+                всегоRow.Childes.Add(chpoПСГrow);
+            if (asfПСГrow != null)
+                всегоRow.Childes.Add(asfПСГrow);
             rows.Add(всегоRow);
+
             return rows;
         }
         private PivotRow CreateCategoryRow(ReportNode psgNode, string categoryName, List<ReportNode> leaves)
