@@ -6,18 +6,13 @@ using System.Linq;
 using System.Windows.Forms;
 using StorageI.ModelsStroevkaMySql;
 using StorageI.Repositories;
+using stroevkaI.Services;
 
 namespace stroevkaI.Forms
 {
-    public partial class CombinedResourcesEditor : UserControl
+    public partial class CombinedResourcesEditor : UserControl,IDataEditor
     {
         private readonly int _subdivisionId;
-        private readonly stroevkaContext _context;
-
-        private readonly WatersRepository _watersRepository;
-        private readonly PenasRepository _penasRepository;
-        private readonly SizodsRepository _sizodsRepository;
-        private readonly KostymsRepository _kostymsRepository;
 
         private List<Water> _watersData;
         private List<Pena> _penasData;
@@ -33,11 +28,6 @@ namespace stroevkaI.Forms
         public CombinedResourcesEditor()
         {
             InitializeComponent();
-            _context = new stroevkaContext();
-            _watersRepository = new WatersRepository(_context);
-            _penasRepository = new PenasRepository(_context);
-            _sizodsRepository = new SizodsRepository(_context);
-            _kostymsRepository = new KostymsRepository(_context);
             SetupDataGridViews();
         }
 
@@ -47,44 +37,215 @@ namespace stroevkaI.Forms
             LoadData();
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _context?.Dispose();
-                components?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
+        // --------------------------------------------------------------
+        // Стилизация 4 гридов — как в WatersEditor / PenasEditor / ...
+        // --------------------------------------------------------------
         private void SetupDataGridViews()
         {
+            // ===== dgvWaters =====
+            dgvWaters.Columns.Clear();
+            dgvWaters.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colWatersId",
+                HeaderText = "Id",
+                Visible = false,
+                ReadOnly = true
+            });
+            dgvWaters.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colWatersName",
+                HeaderText = "Источник",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                ReadOnly = true
+            });
+            dgvWaters.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colWatersTotal",
+                HeaderText = "Всего",
+                Width = 60,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+            dgvWaters.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colWatersFault",
+                HeaderText = "Неиспр.",
+                Width = 60,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+
+            // ===== dgvPenas =====
+            dgvPenas.Columns.Clear();
+            dgvPenas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colPenasId",
+                HeaderText = "Id",
+                Visible = false,
+                ReadOnly = true
+            });
+            dgvPenas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colPenasName",
+                HeaderText = "Пенообразователь",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                ReadOnly = true
+            });
+            dgvPenas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colPenasInwork",
+                HeaderText = "В работе",
+                Width = 60,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+            dgvPenas.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colPenasInrezerv",
+                HeaderText = "В резерве",
+                Width = 60,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+
+            // ===== dgvSizods =====
+            dgvSizods.Columns.Clear();
+            dgvSizods.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colSizodsId",
+                HeaderText = "Id",
+                Visible = false,
+                ReadOnly = true
+            });
+            dgvSizods.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colSizodsName",
+                HeaderText = "Средство",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                ReadOnly = true
+            });
+            dgvSizods.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colSizodsRaschet",
+                HeaderText = "Расчёт",
+                Width = 60,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+            dgvSizods.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colSizodsRezerv",
+                HeaderText = "Резерв",
+                Width = 60,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+            dgvSizods.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colSizodsPostGdzs",
+                HeaderText = "Пост ГДЗС",
+                Width = 70,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+            dgvSizods.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colSizodsBazaGdzs",
+                HeaderText = "База ГДЗС",
+                Width = 70,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+
+            // ===== dgvKostyms =====
+            dgvKostyms.Columns.Clear();
+            dgvKostyms.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colKostymsId",
+                HeaderText = "Id",
+                Visible = false,
+                ReadOnly = true
+            });
+            dgvKostyms.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colKostymsName",
+                HeaderText = "Марка",
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                ReadOnly = true
+            });
+            dgvKostyms.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = "colKostymsCount",
+                HeaderText = "Кол-во",
+                Width = 70,
+                ReadOnly = false,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter
+                }
+            });
+
+            // ===== Общий стиль для всех 4 =====
             var grids = new[] { dgvWaters, dgvPenas, dgvSizods, dgvKostyms };
             foreach (var grid in grids)
             {
                 grid.AllowUserToAddRows = false;
                 grid.AllowUserToDeleteRows = false;
-                grid.ReadOnly = true;
+                grid.ReadOnly = true;              // при включённом режиме снимем ниже
                 grid.RowHeadersVisible = false;
-                grid.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                grid.SelectionMode = DataGridViewSelectionMode.CellSelect;
                 grid.MultiSelect = false;
-                grid.BackgroundColor = Color.White;
                 grid.BorderStyle = BorderStyle.Fixed3D;
                 grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
                 grid.EditMode = DataGridViewEditMode.EditOnEnter;
                 grid.RowTemplate.Height = 22;
                 grid.ColumnHeadersHeight = 25;
+                grid.StandardTab = false;
 
                 grid.EnableHeadersVisualStyles = false;
                 grid.ColumnHeadersDefaultCellStyle.BackColor = SystemColors.Control;
-                grid.ColumnHeadersDefaultCellStyle.ForeColor = SystemColors.ControlText;
-                grid.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold);
+                grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.Black;
+                grid.ColumnHeadersDefaultCellStyle.Font =
+                    new Font("Microsoft Sans Serif", 8.25F, FontStyle.Bold);
+                grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = SystemColors.Control;
+                grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.Black;
+
+                grid.BackgroundColor = Color.White;
+
+                grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(173, 216, 230);
+                grid.DefaultCellStyle.SelectionForeColor = Color.Black;
 
                 grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 248, 248);
-                grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+
+                grid.RowHeadersDefaultCellStyle.SelectionBackColor = SystemColors.Control;
+                grid.RowHeadersDefaultCellStyle.SelectionForeColor = Color.Black;
             }
 
-            // Подписываемся на события CellEndEdit
+            // ===== Подписки =====
             dgvWaters.CellEndEdit += DgvWaters_CellEndEdit;
             dgvPenas.CellEndEdit += DgvPenas_CellEndEdit;
             dgvSizods.CellEndEdit += DgvSizods_CellEndEdit;
@@ -103,28 +264,25 @@ namespace stroevkaI.Forms
 
             var grid = sender as DataGridView;
             if (grid == null) return;
-
-            var row = grid.Rows[e.RowIndex];
-            if (row.IsNewRow) return;
+            if (grid.Rows[e.RowIndex].IsNewRow) return;
 
             grid.BeginEdit(true);
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
             if (cell.IsInEditMode)
             {
-                var textBox = grid.EditingControl as TextBox;
-                if (textBox != null)
-                {
-                    textBox.SelectAll();
-                }
+                if (grid.EditingControl is TextBox tb) tb.SelectAll();
             }
         }
 
+        // --------------------------------------------------------------
+        // Загрузка данных — только из кэша
+        // --------------------------------------------------------------
         public void LoadData()
         {
-            _watersData = _watersRepository.LoadWaters(_subdivisionId);
-            _penasData = _penasRepository.LoadPenas(_subdivisionId);
-            _sizodsData = _sizodsRepository.LoadSizods(_subdivisionId);
-            _kostymsData = _kostymsRepository.LoadKostyms(_subdivisionId);
+            _watersData = AppDataCache.Instance.GetWaters(_subdivisionId).ToList();
+            _penasData = AppDataCache.Instance.GetPenas(_subdivisionId).ToList();
+            _sizodsData = AppDataCache.Instance.GetSizods(_subdivisionId).ToList();
+            _kostymsData = AppDataCache.Instance.GetKostyms(_subdivisionId).ToList();
 
             RefreshGrids();
         }
@@ -144,14 +302,13 @@ namespace stroevkaI.Forms
 
             foreach (var item in _watersData.OrderBy(w => w.Norder))
             {
-                int rowIndex = dgvWaters.Rows.Add();
-                var row = dgvWaters.Rows[rowIndex];
-                row.Cells[0].Value = item.Id;      // colWatersId
-                row.Cells[1].Value = item.Mname;    // colWatersName
-                row.Cells[2].Value = item.Total;    // colWatersTotal
-                row.Cells[3].Value = item.Fault;    // colWatersFault
+                int i = dgvWaters.Rows.Add();
+                var row = dgvWaters.Rows[i];
+                row.Cells["colWatersId"].Value = item.Id;
+                row.Cells["colWatersName"].Value = item.Mname;
+                row.Cells["colWatersTotal"].Value = item.Total;
+                row.Cells["colWatersFault"].Value = item.Fault;
                 row.Tag = item;
-                row.ReadOnly = !_isEditingEnabled;
             }
             dgvWaters.ClearSelection();
         }
@@ -163,14 +320,13 @@ namespace stroevkaI.Forms
 
             foreach (var item in _penasData.OrderBy(p => p.Norder))
             {
-                int rowIndex = dgvPenas.Rows.Add();
-                var row = dgvPenas.Rows[rowIndex];
-                row.Cells[0].Value = item.Id;       // colPenasId
-                row.Cells[1].Value = item.Mname;     // colPenasName
-                row.Cells[2].Value = item.Inwork;    // colPenasInwork
-                row.Cells[3].Value = item.Inrezerv;  // colPenasInrezerv
+                int i = dgvPenas.Rows.Add();
+                var row = dgvPenas.Rows[i];
+                row.Cells["colPenasId"].Value = item.Id;
+                row.Cells["colPenasName"].Value = item.Mname;
+                row.Cells["colPenasInwork"].Value = item.Inwork;
+                row.Cells["colPenasInrezerv"].Value = item.Inrezerv;
                 row.Tag = item;
-                row.ReadOnly = !_isEditingEnabled;
             }
             dgvPenas.ClearSelection();
         }
@@ -182,16 +338,15 @@ namespace stroevkaI.Forms
 
             foreach (var item in _sizodsData.OrderBy(s => s.Norder))
             {
-                int rowIndex = dgvSizods.Rows.Add();
-                var row = dgvSizods.Rows[rowIndex];
-                row.Cells[0].Value = item.Id;          // colSizodsId
-                row.Cells[1].Value = item.Mname;        // colSizodsName
-                row.Cells[2].Value = item.Raschet;      // colSizodsRaschet
-                row.Cells[3].Value = item.Rezerv;       // colSizodsRezerv
-                row.Cells[4].Value = item.PostGdzs;     // colSizodsPostGdzs
-                row.Cells[5].Value = item.BazaGdzs;     // colSizodsBazaGdzs
+                int i = dgvSizods.Rows.Add();
+                var row = dgvSizods.Rows[i];
+                row.Cells["colSizodsId"].Value = item.Id;
+                row.Cells["colSizodsName"].Value = item.Mname;
+                row.Cells["colSizodsRaschet"].Value = item.Raschet;
+                row.Cells["colSizodsRezerv"].Value = item.Rezerv;
+                row.Cells["colSizodsPostGdzs"].Value = item.PostGdzs;
+                row.Cells["colSizodsBazaGdzs"].Value = item.BazaGdzs;
                 row.Tag = item;
-                row.ReadOnly = !_isEditingEnabled;
             }
             dgvSizods.ClearSelection();
         }
@@ -203,27 +358,27 @@ namespace stroevkaI.Forms
 
             foreach (var item in _kostymsData.OrderBy(k => k.Norder))
             {
-                int rowIndex = dgvKostyms.Rows.Add();
-                var row = dgvKostyms.Rows[rowIndex];
-                row.Cells[0].Value = item.Id;      // colKostymsId
-                row.Cells[1].Value = item.Mname;    // colKostymsName
-                row.Cells[2].Value = item.N;        // colKostymsCount
+                int i = dgvKostyms.Rows.Add();
+                var row = dgvKostyms.Rows[i];
+                row.Cells["colKostymsId"].Value = item.Id;
+                row.Cells["colKostymsName"].Value = item.Mname;
+                row.Cells["colKostymsCount"].Value = item.N;
                 row.Tag = item;
-                row.ReadOnly = !_isEditingEnabled;
             }
             dgvKostyms.ClearSelection();
         }
 
+        // --------------------------------------------------------------
+        // Сбор значений из гридов
+        // --------------------------------------------------------------
         private List<Water> GetWatersFromGrid()
         {
             var result = new List<Water>();
             foreach (DataGridViewRow row in dgvWaters.Rows)
             {
-                if (row.IsNewRow || !(row.Tag is Water item)) continue;
-                if (row.Cells[2].Value != null)  // colWatersTotal
-                    int.TryParse(row.Cells[2].Value.ToString(), out int total);
-                if (row.Cells[3].Value != null)  // colWatersFault
-                    int.TryParse(row.Cells[3].Value.ToString(), out int fault);
+                if (row.IsNewRow || row.Tag is not Water item) continue;
+                item.Total = ParseInt(row.Cells["colWatersTotal"].Value);
+                item.Fault = ParseInt(row.Cells["colWatersFault"].Value);
                 result.Add(item);
             }
             return result;
@@ -234,11 +389,9 @@ namespace stroevkaI.Forms
             var result = new List<Pena>();
             foreach (DataGridViewRow row in dgvPenas.Rows)
             {
-                if (row.IsNewRow || !(row.Tag is Pena item)) continue;
-                if (row.Cells[2].Value != null)  // colPenasInwork
-                    int.TryParse(row.Cells[2].Value.ToString(), out int inwork);
-                if (row.Cells[3].Value != null)  // colPenasInrezerv
-                    int.TryParse(row.Cells[3].Value.ToString(), out int inrezerv);
+                if (row.IsNewRow || row.Tag is not Pena item) continue;
+                item.Inwork = ParseInt(row.Cells["colPenasInwork"].Value);
+                item.Inrezerv = ParseInt(row.Cells["colPenasInrezerv"].Value);
                 result.Add(item);
             }
             return result;
@@ -249,15 +402,11 @@ namespace stroevkaI.Forms
             var result = new List<Sizod>();
             foreach (DataGridViewRow row in dgvSizods.Rows)
             {
-                if (row.IsNewRow || !(row.Tag is Sizod item)) continue;
-                if (row.Cells[2].Value != null)  // colSizodsRaschet
-                    int.TryParse(row.Cells[2].Value.ToString(), out int raschet);
-                if (row.Cells[3].Value != null)  // colSizodsRezerv
-                    int.TryParse(row.Cells[3].Value.ToString(), out int rezerv);
-                if (row.Cells[4].Value != null)  // colSizodsPostGdzs
-                    int.TryParse(row.Cells[4].Value.ToString(), out int postGdzs);
-                if (row.Cells[5].Value != null)  // colSizodsBazaGdzs
-                    int.TryParse(row.Cells[5].Value.ToString(), out int bazaGdzs);
+                if (row.IsNewRow || row.Tag is not Sizod item) continue;
+                item.Raschet = ParseInt(row.Cells["colSizodsRaschet"].Value);
+                item.Rezerv = ParseInt(row.Cells["colSizodsRezerv"].Value);
+                item.PostGdzs = ParseInt(row.Cells["colSizodsPostGdzs"].Value);
+                item.BazaGdzs = ParseInt(row.Cells["colSizodsBazaGdzs"].Value);
                 result.Add(item);
             }
             return result;
@@ -268,123 +417,36 @@ namespace stroevkaI.Forms
             var result = new List<Kostym>();
             foreach (DataGridViewRow row in dgvKostyms.Rows)
             {
-                if (row.IsNewRow || !(row.Tag is Kostym item)) continue;
-                if (row.Cells[2].Value != null)  // colKostymsCount
-                    int.TryParse(row.Cells[2].Value.ToString(), out int count);
+                if (row.IsNewRow || row.Tag is not Kostym item) continue;
+                item.N = ParseInt(row.Cells["colKostymsCount"].Value);
                 result.Add(item);
             }
             return result;
         }
 
-        private void DgvWaters_CellEndEdit(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-            var row = dgvWaters.Rows[e.RowIndex];
-            if (row.Tag is Water item)
-            {
-                if (row.Cells[2].Value != null)
-                    int.TryParse(row.Cells[2].Value.ToString(), out int total);
-                if (row.Cells[3].Value != null)
-                    int.TryParse(row.Cells[3].Value.ToString(), out int fault);
-                OnDataChanged();
-            }
-        }
+        private static int ParseInt(object v)
+            => v == null ? 0 : (int.TryParse(v.ToString(), out int i) ? i : 0);
 
-        private void DgvPenas_CellEndEdit(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-            var row = dgvPenas.Rows[e.RowIndex];
-            if (row.Tag is Pena item)
-            {
-                if (row.Cells[2].Value != null)
-                    int.TryParse(row.Cells[2].Value.ToString(), out int inwork);
-                if (row.Cells[3].Value != null)
-                    int.TryParse(row.Cells[3].Value.ToString(), out int inrezerv);
-                OnDataChanged();
-            }
-        }
-
-        private void DgvSizods_CellEndEdit(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-            var row = dgvSizods.Rows[e.RowIndex];
-            if (row.Tag is Sizod item)
-            {
-                if (row.Cells[2].Value != null)
-                    int.TryParse(row.Cells[2].Value.ToString(), out int raschet);
-                if (row.Cells[3].Value != null)
-                    int.TryParse(row.Cells[3].Value.ToString(), out int rezerv);
-                if (row.Cells[4].Value != null)
-                    int.TryParse(row.Cells[4].Value.ToString(), out int postGdzs);
-                if (row.Cells[5].Value != null)
-                    int.TryParse(row.Cells[5].Value.ToString(), out int bazaGdzs);
-                OnDataChanged();
-            }
-        }
-
-        private void DgvKostyms_CellEndEdit(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0) return;
-            var row = dgvKostyms.Rows[e.RowIndex];
-            if (row.Tag is Kostym item)
-            {
-                if (row.Cells[2].Value != null)
-                    int.TryParse(row.Cells[2].Value.ToString(), out int count);
-                OnDataChanged();
-            }
-        }
-
-        private void BtnSave_Click(object sender, EventArgs e)
-        {
-            var waters = GetWatersFromGrid();
-            var penas = GetPenasFromGrid();
-            var sizods = GetSizodsFromGrid();
-            var kostyms = GetKostymsFromGrid();
-
-            bool success = true;
-
-            if (!_watersRepository.SaveWaters(waters))
-                success = false;
-            if (!_penasRepository.SavePenas(penas))
-                success = false;
-            if (!_sizodsRepository.SaveSizods(sizods))
-                success = false;
-            if (!_kostymsRepository.SaveKostyms(kostyms))
-                success = false;
-
-            if (success)
-            {
-                MessageBox.Show("Все данные сохранены.", "Успех",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadData();
-                OnSaveRequested();
-            }
-            else
-            {
-                MessageBox.Show("Ошибка при сохранении некоторых данных.", "Ошибка",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+        // --------------------------------------------------------------
+        // Редактирование
+        // --------------------------------------------------------------
+        private void DgvWaters_CellEndEdit(object sender, DataGridViewCellEventArgs e) => OnDataChanged();
+        private void DgvPenas_CellEndEdit(object sender, DataGridViewCellEventArgs e) => OnDataChanged();
+        private void DgvSizods_CellEndEdit(object sender, DataGridViewCellEventArgs e) => OnDataChanged();
+        private void DgvKostyms_CellEndEdit(object sender, DataGridViewCellEventArgs e) => OnDataChanged();
 
         private void ChkEditMode_CheckedChanged(object sender, EventArgs e)
         {
             if (chkEditMode.Checked)
             {
-                using (var passwordForm = new PasswordInputForm())
+                using var passwordForm = new PasswordInputForm();
+                if (passwordForm.ShowDialog() != DialogResult.OK) { chkEditMode.Checked = false; return; }
+                if (passwordForm.Password != ADMIN_PASSWORD)
                 {
-                    if (passwordForm.ShowDialog() != DialogResult.OK)
-                    {
-                        chkEditMode.Checked = false;
-                        return;
-                    }
-
-                    if (passwordForm.Password != ADMIN_PASSWORD)
-                    {
-                        chkEditMode.Checked = false;
-                        MessageBox.Show("Неверный пароль.", "Ошибка",
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
+                    chkEditMode.Checked = false;
+                    MessageBox.Show("Неверный пароль.", "Ошибка",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
                 }
                 _isEditingEnabled = true;
             }
@@ -406,14 +468,52 @@ namespace stroevkaI.Forms
             btnSave.Enabled = _isEditingEnabled;
         }
 
-        private void OnDataChanged()
+        // --------------------------------------------------------------
+        // Сохранение
+        // --------------------------------------------------------------
+        private void BtnSave_Click(object sender, EventArgs e)
         {
-            DataChanged?.Invoke(this, EventArgs.Empty);
+            var waters = GetWatersFromGrid();
+            var penas = GetPenasFromGrid();
+            var sizods = GetSizodsFromGrid();
+            var kostyms = GetKostymsFromGrid();
+
+            bool success = true;
+
+            using (var ctx = new stroevkaContext())
+            {
+                var wr = new WatersRepository(ctx);
+                var pr = new PenasRepository(ctx);
+                var sr = new SizodsRepository(ctx);
+                var kr = new KostymsRepository(ctx);
+
+                if (!wr.SaveWaters(waters)) success = false;
+                if (!pr.SavePenas(penas)) success = false;
+                if (!sr.SaveSizods(sizods)) success = false;
+                if (!kr.SaveKostyms(kostyms)) success = false;
+            }
+
+            if (success)
+            {
+                // Обновляем кэш
+                foreach (var w in waters) AppDataCache.Instance.UpdateWater(w);
+                foreach (var p in penas) AppDataCache.Instance.UpdatePena(p);
+                foreach (var s in sizods) AppDataCache.Instance.UpdateSizod(s);
+                foreach (var k in kostyms) AppDataCache.Instance.UpdateKostym(k);
+
+                MessageBox.Show("Все данные сохранены.", "Успех",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                LoadData();
+                OnSaveRequested();
+            }
+            else
+            {
+                MessageBox.Show("Ошибка при сохранении некоторых данных.", "Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
-        private void OnSaveRequested()
-        {
-            SaveRequested?.Invoke(this, EventArgs.Empty);
-        }
+        private void OnDataChanged() => DataChanged?.Invoke(this, EventArgs.Empty);
+        private void OnSaveRequested() => SaveRequested?.Invoke(this, EventArgs.Empty);
     }
 }

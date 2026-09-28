@@ -115,11 +115,6 @@ namespace stroevkaI.Forms
             // 
             // dgvWaters
             // 
-            this.dgvWaters.ColumnCount = 4;
-            this.dgvWaters.Columns.Add("colWatersId", "Id");
-            this.dgvWaters.Columns.Add("colWatersName", "Источник");
-            this.dgvWaters.Columns.Add("colWatersTotal", "Всего");
-            this.dgvWaters.Columns.Add("colWatersFault", "Неиспр.");
             this.dgvWaters.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvWaters.Location = new System.Drawing.Point(2, 2);
             this.dgvWaters.Name = "dgvWaters";
@@ -129,11 +124,6 @@ namespace stroevkaI.Forms
             // 
             // dgvPenas
             // 
-            this.dgvPenas.ColumnCount = 4;
-            this.dgvPenas.Columns.Add("colPenasId", "Id");
-            this.dgvPenas.Columns.Add("colPenasName", "Пенообразователь");
-            this.dgvPenas.Columns.Add("colPenasInwork", "В работе");
-            this.dgvPenas.Columns.Add("colPenasInrezerv", "В резерве");
             this.dgvPenas.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvPenas.Location = new System.Drawing.Point(2, 2);
             this.dgvPenas.Name = "dgvPenas";
@@ -143,13 +133,6 @@ namespace stroevkaI.Forms
             // 
             // dgvSizods
             // 
-            this.dgvSizods.ColumnCount = 6;
-            this.dgvSizods.Columns.Add("colSizodsId", "Id");
-            this.dgvSizods.Columns.Add("colSizodsName", "Средство");
-            this.dgvSizods.Columns.Add("colSizodsRaschet", "Расчет");
-            this.dgvSizods.Columns.Add("colSizodsRezerv", "Резерв");
-            this.dgvSizods.Columns.Add("colSizodsPostGdzs", "Пост ГДЗС");
-            this.dgvSizods.Columns.Add("colSizodsBazaGdzs", "База ГДЗС");
             this.dgvSizods.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvSizods.Location = new System.Drawing.Point(2, 2);
             this.dgvSizods.Name = "dgvSizods";
@@ -159,10 +142,6 @@ namespace stroevkaI.Forms
             // 
             // dgvKostyms
             // 
-            this.dgvKostyms.ColumnCount = 3;
-            this.dgvKostyms.Columns.Add("colKostymsId", "Id");
-            this.dgvKostyms.Columns.Add("colKostymsName", "Марка");
-            this.dgvKostyms.Columns.Add("colKostymsCount", "Кол-во");
             this.dgvKostyms.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dgvKostyms.Location = new System.Drawing.Point(2, 2);
             this.dgvKostyms.Name = "dgvKostyms";

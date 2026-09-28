@@ -157,5 +157,59 @@ namespace stroevkaI.Services
             lock (_lock) { PivotRows = rows; }
             Reloaded?.Invoke(this, EventArgs.Empty);
         }
+
+
+        public void UpdateWater(Water item)
+        {
+            if (item?.SubdivisionId == null) return;
+            lock (_lock)
+            {
+                int key = item.SubdivisionId.Value;
+                if (!WatersByPch.TryGetValue(key, out var list))
+                    WatersByPch[key] = list = new List<Water>();
+                int idx = list.FindIndex(w => w.Id == item.Id);
+                if (idx >= 0) list[idx] = item; else list.Add(item);
+            }
+        }
+
+        public void UpdatePena(Pena item)
+        {
+            if (item?.SubdivisionId == null) return;
+            lock (_lock)
+            {
+                int key = item.SubdivisionId.Value;
+                if (!PenasByPch.TryGetValue(key, out var list))
+                    PenasByPch[key] = list = new List<Pena>();
+                int idx = list.FindIndex(p => p.Id == item.Id);
+                if (idx >= 0) list[idx] = item; else list.Add(item);
+            }
+        }
+
+        public void UpdateSizod(Sizod item)
+        {
+            if (item?.SubdivisionId == null) return;
+            lock (_lock)
+            {
+                int key = item.SubdivisionId.Value;
+                if (!SizodsByPch.TryGetValue(key, out var list))
+                    SizodsByPch[key] = list = new List<Sizod>();
+                int idx = list.FindIndex(s => s.Id == item.Id);
+                if (idx >= 0) list[idx] = item; else list.Add(item);
+            }
+        }
+
+        public void UpdateKostym(Kostym item)
+        {
+            if (item?.SubdivisionId == null) return;
+            lock (_lock)
+            {
+                int key = item.SubdivisionId.Value;
+                if (!KostymsByPch.TryGetValue(key, out var list))
+                    KostymsByPch[key] = list = new List<Kostym>();
+                int idx = list.FindIndex(k => k.Id == item.Id);
+                if (idx >= 0) list[idx] = item; else list.Add(item);
+            }
+        }
+
     }
 }
