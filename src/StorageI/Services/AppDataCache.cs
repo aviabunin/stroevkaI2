@@ -36,7 +36,7 @@ namespace stroevkaI.Services
         // ---------------------------------------------------------------
         // ЗАГРУЗКА (вызывается из фона)
         // ---------------------------------------------------------------
-        public void LoadAll()
+        public  void LoadAll()
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -52,7 +52,7 @@ namespace stroevkaI.Services
             var sizods = ctx.Sizods.AsNoTracking().ToList();
             var kostyms = ctx.Kostyms.AsNoTracking().ToList();
             var nachkars = ctx.CacheNachkars.AsNoTracking().ToList();
-            var pivots = ctx.PivotRows.AsNoTracking().ToList();
+            //var pivots = ctx.PivotRows.AsNoTracking().ToList();
 
             // Группировки
             var psgDict = psgstat.ToDictionary(p => p.Id, p => p);
@@ -80,14 +80,14 @@ namespace stroevkaI.Services
                 SizodsByPch = sizodsDict;
                 KostymsByPch = kostymsDict;
                 NachkarBySubdiv = nachkarDict;
-                PivotRows = pivots;
+                //PivotRows = pivots;
                 LastLoadedAt = DateTime.Now;
                 IsLoaded = true;
             }
 
             sw.Stop();
             System.Diagnostics.Debug.WriteLine($"[Cache] LoadAll: {sw.ElapsedMilliseconds} ms");
-            Reloaded?.Invoke(this, EventArgs.Empty);
+            //Reloaded?.Invoke(this, EventArgs.Empty);
         }
 
         private static Dictionary<int, List<T>> Group<T>(
@@ -155,6 +155,7 @@ namespace stroevkaI.Services
         public void UpdatePivotRows(List<PivotRow> rows)
         {
             lock (_lock) { PivotRows = rows; }
+            Reloaded?.Invoke(this, EventArgs.Empty);
         }
     }
 }

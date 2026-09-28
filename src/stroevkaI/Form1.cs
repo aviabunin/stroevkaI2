@@ -78,25 +78,36 @@ namespace stroevkaI
 
             _columnManager = new ColumnVisibilityManager(PivotRowGrid);
         }
-
+        /// <summary>
+        /// Detect - надо будет посмотреть весь цикл работы с дисками и сетью
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void Form1_Load(object sender, EventArgs e)
         {
             var sw = Stopwatch.StartNew();
             void Mark(string s) => Log.Mark(s, sw.ElapsedMilliseconds, 0);
 
             Mark("Start");
-            // 1. БЫСТРАЯ отрисовка из прямого SQL (то, что у вас уже есть)
+
+            // 0. Сервисы — нужны для PivotTreeBuilder
+            _jsonService = new JsonDataService(
+                Path.Combine(AppContext.BaseDirectory, _config.JsonLocalPath));
+            _appStatus = new AppStatusService(
+                _jsonService.GetBasePath(),
+                _config.JsonNetworkPath,
+                _config.NetworkDrives);
+            _treeBuilder = new PivotTreeBuilder(context, _appStatus, _jsonService);
+            Mark("Services created");
+
+            // 1. БЫСТРАЯ отрисовка из pivot_rows
             _allPivotRows = FastPivotLoader.LoadAll();
-            
             Mark($"LoadAll ({_allPivotRows.Count})");
-            
-            // Заполняем cmbPsg — только Территориальный + 18 районных ПСГ
+
             LoadPsgListFromDb();
             Mark($"LoadPsgList ({cmbPsg.Items.Count})");
 
-            // Ставим сохранённый ПСГ
             rootPsgName = Settings.Default.rootGarn;
-
             if (string.IsNullOrEmpty(rootPsgName) || !_psgNameToId.ContainsKey(rootPsgName))
                 rootPsgName = "Территориальный";
 
@@ -105,41 +116,48 @@ namespace stroevkaI
             cmbPsg.SelectedIndex = idx >= 0 ? idx : 0;
             cmbPsg.SelectedIndexChanged += CmbPsg_SelectedIndexChanged;
 
-
-            //...
             ShowView(rootPsgName);
             Mark($"Fast ShowView({rootPsgName})");
-            //return;
-            // 2. ФОНОВАЯ полная загрузка
-            await LoadCacheInBackgroundAsync();
+
+            // 2. ФОНОВАЯ полная загрузка + пересчёт
+            await LoadCacheAndRecalculateAsync();
             Mark("Cache loaded");
 
-            // 3. Перерисовать на «реальных» данных
+            // 3. Перерисовать на актуальных данных
             _allPivotRows = AppDataCache.Instance.PivotRows;
             ShowView(rootPsgName);
             UpdateStatus($"Обновлено на {AppDataCache.Instance.LastLoadedAt:HH:mm:ss}");
-
         }
-        private async Task LoadCacheInBackgroundAsync()
+        private async Task LoadCacheAndRecalculateAsync()
         {
-            UpdateStatus("Загрузка данных...");
+            UpdateStatus("Загрузка справочников...");
 
-            await Task.Run(() =>
+            // Этап 1: справочники — в фоне
+            await Task.Run(() => AppDataCache.Instance.LoadAll());
+
+            UpdateStatus("Пересчёт PivotRows...");
+
+            // Этап 2: пересчёт — тоже в фоне
+            try
             {
-                try { AppDataCache.Instance.LoadAll(); }
-                catch (Exception ex)
-                {
-                    BeginInvoke(() => MessageBox.Show(this,
-                        $"Ошибка фоновой загрузки: {ex.Message}",
-                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error));
-                }
-            });
+                var fresh = await Task.Run(async () =>
+                    await _treeBuilder.GeneratePivotRowsAsync("Территориальный", forceReload: true));
 
-            UpdateStatus($"Данные загружены за {AppDataCache.Instance.LastLoadedAt:HH:mm:ss}");
+                // Этап 3: сохранение в БД
+                var save = await Task.Run(() => PivotRowsRepository.SavePivotRows(fresh));
+                Log.Write($"[Recalc] +{save.Inserted} ~{save.Updated} ={save.Unchanged}");
+
+                // Этап 4: кладём в кэш — это триггерит Reloaded
+                AppDataCache.Instance.UpdatePivotRows(fresh);
+            }
+            catch (Exception ex)
+            {
+                Log.Write($"[Recalc] error: {ex}");
+                BeginInvoke(() => MessageBox.Show(this,
+                    $"Ошибка пересчёта: {ex.Message}",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error));
+            }
         }
-
-
-
 
         private void LoadPsgListFromDb()
         {
@@ -509,10 +527,10 @@ namespace stroevkaI
 
                 string psgName = "Территориальный";
 
-                AppStatusService statusApp = new AppStatusService("","",new List<string>() { @"D:\"});
-                string basePath = @"D:\";
-                JsonDataService service = new JsonDataService(basePath);
-                _treeBuilder = new PivotTreeBuilder(context,statusApp, service);
+                //AppStatusService statusApp = new AppStatusService("","",new List<string>() { @"D:\"});
+                //string basePath = @"D:\";
+                //JsonDataService service = new JsonDataService(basePath);
+                //_treeBuilder = new PivotTreeBuilder(context,statusApp, service);
                 var rows = await _treeBuilder.GeneratePivotRowsAsync(psgName, forceReload: true);
                 var rezult =  PivotRowsRepository.SavePivotRows(rows);
 
@@ -1050,7 +1068,7 @@ namespace stroevkaI
             }
         }
 
-        #region обновление данных
+        #region обновление данных  - пока не используется - возможно удалить
         private void RefreshData(bool showStatus = true)
         {
             if (_isRefreshing) return;
