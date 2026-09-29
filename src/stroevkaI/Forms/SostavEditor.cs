@@ -361,27 +361,28 @@ namespace stroevkaI.Forms
         /// </summary>
         private bool IsCalculatedField(string name, string sostavVid = null)
         {
-            // "Всего" в группе "2 Боевой расчет" - вычисляемое
-            if (name == "Всего" && sostavVid == "2 Боевой расчет")
-                return true;
+            // Всегда вычисляемые
+            if (IsAlwaysReadOnlyField(name, sostavVid)) return true;
 
-            // "ЛС в БР" - вычисляемое
-            if (name == "ЛС в БР")
-                return true;
-
-            // "Налицо" - вычисляемое
-            if (name == "Налицо")
-                return true;
-
-            // "Всего" в группе "4 Отсутствует" - вычисляемое
-            if (name == "Всего" && sostavVid == "4 Отсутствует")
-                return true;
-
-            // "Всего" в группе "1 Общие" - вычисляемое (если не в режиме ручного редактирования)
-            if (name == "Всего" && sostavVid == "1 Общие")
-                return true;
+            // По списку (1 Общие) — вычисляемым НЕ является:
+            // либо доступно только по паролю, либо недоступно вообще.
+            // Но в режиме ручного редактирования данные из грида в него пишутся.
 
             return false;
+        }
+
+        private bool IsAlwaysReadOnlyField(string name, string sostavVid)
+        {
+            if (name == "Налицо" && sostavVid == "1 Общие") return true;
+            if (name == "Всего" && sostavVid == "2 Боевой расчет") return true;
+            if (name == "ЛС в БР" && sostavVid == "2 Боевой расчет") return true;
+            if (name == "Всего" && sostavVid == "4 Отсутствует") return true;
+            return false;
+        }
+
+        private bool IsPasswordOnlyField(string name, string sostavVid)
+        {
+            return name == "По списку" && sostavVid == "1 Общие";
         }
 
         /// <summary>
@@ -391,8 +392,8 @@ namespace stroevkaI.Forms
         {
             if (_currentData == null) return 0;
 
-            // 1. "ЛС в БР" = ПНК + КО + Пожарные + Водители
-            if (name == "ЛС в БР")
+            // 1. ЛС в БР (2 Боевой расчет) = ПНК + КО + Пожарные + Водители
+            if (name == "ЛС в БР" && sostavVid == "2 Боевой расчет")
             {
                 var names = new List<string> { "ПНК", "КО", "Пожарные", "Водители" };
                 return _currentData
@@ -400,57 +401,44 @@ namespace stroevkaI.Forms
                     .Sum(s => s.Count ?? 0);
             }
 
-            // 2. "Всего" в группе "2 Боевой расчет" = ЛС в БР + НК
+            // 2. Всего (2 Боевой расчет) = ЛС в БР + НК
             if (name == "Всего" && sostavVid == "2 Боевой расчет")
             {
                 int lsInBr = _currentData
                     .Where(s => s.Name == "ЛС в БР" && s.SostavVid == "2 Боевой расчет")
                     .Sum(s => s.Count ?? 0);
-
                 int nk = _currentData
                     .Where(s => s.Name == "НК" && s.SostavVid == "2 Боевой расчет")
                     .Sum(s => s.Count ?? 0);
-
                 return lsInBr + nk;
             }
 
-            // 3. "Налицо" = Всего (2 Боевой расчет) + Диспетчер
-            if (name == "Налицо")
+            // 3. Налицо (1 Общие) = Всего (2 Боевой расчет) + Диспетчер (2 Боевой расчет)
+            if (name == "Налицо" && sostavVid == "1 Общие")
             {
                 int totalCombat = _currentData
                     .Where(s => s.Name == "Всего" && s.SostavVid == "2 Боевой расчет")
                     .Sum(s => s.Count ?? 0);
-
                 int dispatcher = _currentData
                     .Where(s => s.Name == "Диспетчер" && s.SostavVid == "2 Боевой расчет")
                     .Sum(s => s.Count ?? 0);
-
                 return totalCombat + dispatcher;
             }
 
-            // 4. "Всего" в группе "4 Отсутствует" = Отпуск + По больничному + Командировка + Прочее + Недокомплект
+            // 4. Всего (4 Отсутствует) = По списку (1 Общие) − Налицо (1 Общие)
             if (name == "Всего" && sostavVid == "4 Отсутствует")
             {
-                var names = new List<string> { "Отпуск", "По больничному", "Командировка", "Прочее", "Недокомплект" };
-                return _currentData
-                    .Where(s => names.Contains(s.Name) && s.SostavVid == "4 Отсутствует")
+                int poSpisku = _currentData
+                    .Where(s => s.Name == "По списку" && s.SostavVid == "1 Общие")
                     .Sum(s => s.Count ?? 0);
-            }
-
-            // 5. "По списку" в группе "1 Общие" = Налицо + Всего (4 Отсутствует)
-            if (name == "По списку" && sostavVid == "1 Общие")
-            {
                 int nalico = _currentData
                     .Where(s => s.Name == "Налицо" && s.SostavVid == "1 Общие")
                     .Sum(s => s.Count ?? 0);
-
-                int totalAbsent = _currentData
-                    .Where(s => s.Name == "Всего" && s.SostavVid == "4 Отсутствует")
-                    .Sum(s => s.Count ?? 0);
-
-                return nalico + totalAbsent;
+                return poSpisku - nalico;
             }
 
+            // 5. По списку (1 Общие) НЕ вычисляется — вводится вручную
+            //    (через форму установки параметров или по паролю)
             return 0;
         }
         /// <summary>
@@ -460,98 +448,43 @@ namespace stroevkaI.Forms
         {
             if (_currentData == null) return;
 
-            // 1. Пересчитываем "ЛС в БР" = ПНК + КО + Пожарные + Водители
-            var lsInBr = _currentData.FirstOrDefault(s => s.Name == "ЛС в БР" && s.SostavVid == "2 Боевой расчет");
+            // 1. ЛС в БР (2 БР) = ПНК + КО + Пожарные + Водители
+            var lsInBr = _currentData.FirstOrDefault(s =>
+                s.Name == "ЛС в БР" && s.SostavVid == "2 Боевой расчет");
             if (lsInBr != null)
-            {
-                lsInBr.Count = CalculateField("ЛС в БР", lsInBr.SostavVid);
-            }
+                lsInBr.Count = CalculateField("ЛС в БР", "2 Боевой расчет");
 
-            // 2. Пересчитываем "Всего" в группе "2 Боевой расчет" = ЛС в БР + НК
-            var totalCombat = _currentData.FirstOrDefault(s => s.Name == "Всего" && s.SostavVid == "2 Боевой расчет");
+            // 2. Всего (2 БР) = ЛС в БР + НК
+            var totalCombat = _currentData.FirstOrDefault(s =>
+                s.Name == "Всего" && s.SostavVid == "2 Боевой расчет");
             if (totalCombat != null)
-            {
                 totalCombat.Count = CalculateField("Всего", "2 Боевой расчет");
-            }
 
-            // 3. Пересчитываем "Налицо" = Всего (2 Боевой расчет) + Диспетчер
-            var nalico = _currentData.FirstOrDefault(s => s.Name == "Налицо" && s.SostavVid == "1 Общие");
+            // 3. Налицо (1 Общие) = Всего (2 БР) + Диспетчер (2 БР)
+            var nalico = _currentData.FirstOrDefault(s =>
+                s.Name == "Налицо" && s.SostavVid == "1 Общие");
             if (nalico != null)
-            {
-                nalico.Count = CalculateField("Налицо", nalico.SostavVid);
-            }
+                nalico.Count = CalculateField("Налицо", "1 Общие");
 
-            // 4. Пересчитываем "Всего" в группе "4 Отсутствует"
-            var totalAbsent = _currentData.FirstOrDefault(s => s.Name == "Всего" && s.SostavVid == "4 Отсутствует");
+            // 4. По списку (1 Общие) — НЕ пересчитываем, вводится вручную
+
+            // 5. Всего (4 Отсутствует) = По списку (1) − Налицо (1)
+            var totalAbsent = _currentData.FirstOrDefault(s =>
+                s.Name == "Всего" && s.SostavVid == "4 Отсутствует");
             if (totalAbsent != null)
-            {
                 totalAbsent.Count = CalculateField("Всего", "4 Отсутствует");
-            }
-
-            // 5. Пересчитываем "Всего" в группе "1 Общие" = Налицо + Всего (4 Отсутствует)
-            var totalGeneral = _currentData.FirstOrDefault(s => s.Name == "Всего" && s.SostavVid == "1 Общие");
-            if (totalGeneral != null)
-            {
-                // ВСЕГДА пересчитываем, но если режим ручного редактирования включён,
-                // и пользователь ввёл своё значение - не перезаписываем его
-                int calculatedValue = CalculateField("Всего", "1 Общие");
-
-                if (!_isConstEditEnabled)
-                {
-                    // Режим ручного редактирования выключен - всегда пересчитываем
-                    totalGeneral.Count = calculatedValue;
-                }
-                else
-                {
-                    // Режим ручного редактирования включён
-                    // Если текущее значение отличается от вычисленного и не равно 0,
-                    // значит пользователь ввёл своё значение - не трогаем
-                    if (totalGeneral.Count == calculatedValue || totalGeneral.Count == 0)
-                    {
-                        totalGeneral.Count = calculatedValue;
-                    }
-                    // Иначе сохраняем введённое пользователем значение
-                }
-            }
         }
         /// <summary>
         /// Обновляет вычисляемые поля в гриде без полной перестройки
         /// </summary>
         private void UpdateCalculatedFieldsInGrid()
         {
-            // Пересчитываем все вычисляемые поля в данных
-            RecalculateAllCalculatedFields();
-
-            // Обновляем отображение в гриде для вычисляемых полей
             foreach (DataGridViewRow row in dgvSostav.Rows)
             {
-                if (row.Tag is Sostav item && IsCalculatedField(item.Name, item.SostavVid))
+                if (row.Tag is not Sostav item) continue;
+                if (IsCalculatedField(item.Name, item.SostavVid))
                 {
-                    int calculatedValue = CalculateField(item.Name, item.SostavVid);
-                    if (row.Cells["colCount"].Value == null ||
-                        (int.TryParse(row.Cells["colCount"].Value.ToString(), out int currentValue) && currentValue != calculatedValue))
-                    {
-                        row.Cells["colCount"].Value = calculatedValue;
-                        item.Count = calculatedValue;
-                    }
-                }
-            }
-
-            // Обновляем "Всего" (1 Общие) если не в режиме ручного редактирования
-            if (!_isConstEditEnabled)
-            {
-                foreach (DataGridViewRow row in dgvSostav.Rows)
-                {
-                    if (row.Tag is Sostav item && item.Name == TOTAL_FIELD_NAME && item.SostavVid == TOTAL_GROUP)
-                    {
-                        int calculatedValue = CalculateField("Всего", "1 Общие");
-                        if (row.Cells["colCount"].Value == null ||
-                            (int.TryParse(row.Cells["colCount"].Value.ToString(), out int currentValue) && currentValue != calculatedValue))
-                        {
-                            row.Cells["colCount"].Value = calculatedValue;
-                            item.Count = calculatedValue;
-                        }
-                    }
+                    row.Cells["colCount"].Value = item.Count;
                 }
             }
         }
@@ -565,27 +498,27 @@ namespace stroevkaI.Forms
         private List<Sostav> GetDataFromGrid()
         {
             var result = new List<Sostav>();
+
             foreach (DataGridViewRow row in dgvSostav.Rows)
             {
                 if (row.IsNewRow) continue;
-                if (row.Tag is Sostav item)
+                if (row.Tag is not Sostav item) continue;
+
+                // Читаем значение из грида, если поле НЕ является "вычисляемым".
+                // По списку (1) — редактируемое, поэтому попадает сюда.
+                if (!IsCalculatedField(item.Name, item.SostavVid))
                 {
-                    // Обновляем количество только если поле не вычисляемое
-                    if (!IsCalculatedField(item.Name, item.SostavVid))
-                    {
-                        if (row.Cells["colCount"].Value != null)
-                        {
-                            if (int.TryParse(row.Cells["colCount"].Value.ToString(), out int count))
-                            {
-                                item.Count = count;
-                            }
-                        }
-                    }
-                    result.Add(item);
+                    int newCount = ParseInt(row.Cells["colCount"].Value);
+                    item.Count = newCount;
                 }
+
+                result.Add(item);
             }
             return result;
         }
+
+        private static int ParseInt(object v)
+            => v == null ? 0 : (int.TryParse(v.ToString(), out int i) ? i : 0);
 
         private void OnDataChanged()
         {
@@ -596,64 +529,26 @@ namespace stroevkaI.Forms
         {
             SaveRequested?.Invoke(this, EventArgs.Empty);
         }
+
         private void BtnSave_Click(object sender, EventArgs e)
         {
-            // Пересчитываем все вычисляемые поля перед сохранением
+            // Пересчитываем всё перед сохранением
             RecalculateAllCalculatedFields();
 
-            // Получаем все данные из грида
             var dataToSave = GetDataFromGrid();
 
-            // ============================================================
-            // ПРОВЕРКА: "По списку" (1 Общие) = "Налицо" (1 Общие) + "Всего" (4 Отсутствует)
-            // ============================================================
-            var totalGeneral = dataToSave.FirstOrDefault(s => s.Name == "По списку" && s.SostavVid == "1 Общие");
-            var nalico = dataToSave.FirstOrDefault(s => s.Name == "Налицо" && s.SostavVid == "1 Общие");
-            var totalAbsent = dataToSave.FirstOrDefault(s => s.Name == "Всего" && s.SostavVid == "4 Отсутствует");
-
-            // Отладочный вывод
-            System.Diagnostics.Debug.WriteLine($"=== BtnSave_Click Проверка ===");
-            System.Diagnostics.Debug.WriteLine($"totalGeneral (По списку): {totalGeneral?.Name} = {totalGeneral?.Count}");
-            System.Diagnostics.Debug.WriteLine($"nalico: {nalico?.Name} = {nalico?.Count}");
-            System.Diagnostics.Debug.WriteLine($"totalAbsent: {totalAbsent?.Name} = {totalAbsent?.Count}");
-
-            if (totalGeneral != null && nalico != null && totalAbsent != null)
+            // Проверка: Всего (4) должно быть >= 0
+            var totalAbsent = dataToSave.FirstOrDefault(s =>
+                s.Name == "Всего" && s.SostavVid == "4 Отсутствует");
+            if (totalAbsent != null && (totalAbsent.Count ?? 0) < 0)
             {
-                int expectedValue = (nalico.Count ?? 0) + (totalAbsent.Count ?? 0);
-                int actualValue = totalGeneral.Count ?? 0;
-
-                System.Diagnostics.Debug.WriteLine($"expectedValue: {expectedValue}, actualValue: {actualValue}");
-
-                if (actualValue != expectedValue)
-                {
-                    MessageBox.Show(
-                        this,
-                        $"НЕВЕРНОЕ СООТНОШЕНИЕ ЗНАЧЕНИЙ!\n\n" +
-                        $"Параметр 'По списку' (группа '1 Общие') должен быть равен сумме:\n" +
-                        $"  'Налицо' (1 Общие) + 'Всего' (4 Отсутствует)\n\n" +
-                        $"Ожидаемое значение: {expectedValue}\n" +
-                        $"  (Налицо: {nalico.Count ?? 0} + Всего(4 Отсутствует): {totalAbsent.Count ?? 0})\n\n" +
-                        $"Фактическое значение 'По списку': {actualValue}\n\n" +
-                        $"Разница: {actualValue - expectedValue}\n\n" +
-                        $"Для исправления:\n" +
-                        $"  1. Измените значения 'Налицо' или 'Всего' (4 Отсутствует)\n" +
-                        $"  2. ИЛИ включите 'Редактирование постоянных' и исправьте 'По списку' вручную",
-                        "Ошибка валидации",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning
-                    );
-                    return; // НЕ СОХРАНЯЕМ
-                }
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("Не найдены необходимые строки для проверки!");
-                System.Diagnostics.Debug.WriteLine($"totalGeneral: {(totalGeneral != null ? "найден" : "НЕ НАЙДЕН")}");
-                System.Diagnostics.Debug.WriteLine($"nalico: {(nalico != null ? "найден" : "НЕ НАЙДЕН")}");
-                System.Diagnostics.Debug.WriteLine($"totalAbsent: {(totalAbsent != null ? "найден" : "НЕ НАЙДЕН")}");
+                MessageBox.Show(this,
+                    $"Ошибка: 'Всего (4 Отсутствует)' не может быть отрицательным.\n" +
+                    $"По списку (1) < Налицо (1).",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
 
-            // Если проверка пройдена - сохраняем
             if (_repository.SaveSostav(dataToSave))
             {
                 MessageBox.Show("Данные сохранены.", "Успех",
@@ -667,48 +562,37 @@ namespace stroevkaI.Forms
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
         private void ChkEditMode_CheckedChanged(object sender, EventArgs e)
         {
             if (chkEditMode.Checked)
             {
-                using (var passwordForm = new PasswordInputForm())
+                using var passwordForm = new PasswordInputForm();
+                if (passwordForm.ShowDialog() != DialogResult.OK)
                 {
-                    if (passwordForm.ShowDialog() != DialogResult.OK)
-                    {
-                        chkEditMode.Checked = false;
-                        return;
-                    }
-
-                    if (passwordForm.Password != ADMIN_PASSWORD)
-                    {
-                        chkEditMode.Checked = false;
-                        MessageBox.Show("Неверный пароль.", "Ошибка",
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
+                    chkEditMode.Checked = false;
+                    return;
+                }
+                if (passwordForm.Password != ADMIN_PASSWORD)
+                {
+                    chkEditMode.Checked = false;
+                    MessageBox.Show("Неверный пароль.", "Ошибка",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
                 }
                 _isConstEditEnabled = true;
-                btnSaveConst.Enabled = true;
             }
             else
             {
                 _isConstEditEnabled = false;
-                btnSaveConst.Enabled = false;
-
-                // Пересчитываем все вычисляемые поля при отключении ручного режима
-                RecalculateAllCalculatedFields();
-                RefreshGrid();
             }
 
+            // Открываем/закрываем только "По списку (1 Общие)"
             foreach (DataGridViewRow row in dgvSostav.Rows)
             {
-                if (row.Tag is Sostav item)
+                if (row.Tag is Sostav item && IsPasswordOnlyField(item.Name, item.SostavVid))
                 {
-                    bool isTotalField = (item.Name == TOTAL_FIELD_NAME && item.SostavVid == TOTAL_GROUP);
-                    if (isTotalField)
-                    {
-                        row.ReadOnly = !_isConstEditEnabled;
-                    }
+                    row.ReadOnly = !_isConstEditEnabled;
                 }
             }
         }
@@ -751,37 +635,22 @@ namespace stroevkaI.Forms
         {
             if (e.RowIndex < 0) return;
             var row = dgvSostav.Rows[e.RowIndex];
-            if (row.Tag is Sostav item)
+            if (row.Tag is not Sostav item) return;
+
+            // Обновляем данные из грида
+            if (!IsCalculatedField(item.Name, item.SostavVid))
             {
-                // Обновляем данные только если поле не вычисляемое
-                if (!IsCalculatedField(item.Name, item.SostavVid))
-                {
-                    if (row.Cells["colCount"].Value != null)
-                    {
-                        if (int.TryParse(row.Cells["colCount"].Value.ToString(), out int count))
-                        {
-                            item.Count = count;
-                        }
-                    }
-                }
-
-                // ПЕРЕСЧИТЫВАЕМ ВСЕ ВЫЧИСЛЯЕМЫЕ ПОЛЯ ПОСЛЕ ИЗМЕНЕНИЯ
-                RecalculateAllCalculatedFields();
-
-                // ОБНОВЛЯЕМ ТОЛЬКО ВЫЧИСЛЯЕМЫЕ ПОЛЯ В ГРИДЕ
-                UpdateCalculatedFieldsInGrid();
-
-                // ПРОВЕРЯЕМ СООТВЕТСТВИЕ ПОСЛЕ ИЗМЕНЕНИЯ
-                if (this.IsHandleCreated)
-                {
-                    this.BeginInvoke(new Action(() =>
-                    {
-                        CheckAndWarnAboutDataInconsistency();
-                    }));
-                }
-
-                OnDataChanged();
+                item.Count = ParseInt(row.Cells["colCount"].Value);
             }
+
+            // Пересчитываем всю цепочку зависимостей
+            RecalculateAllCalculatedFields();
+
+            // Обновляем только вычисляемые строки в гриде (не всю таблицу)
+            UpdateCalculatedFieldsInGrid();
+
+            OnDataChanged();
         }
+
     }
 }

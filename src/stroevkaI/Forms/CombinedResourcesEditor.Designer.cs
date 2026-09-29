@@ -180,7 +180,7 @@ namespace stroevkaI.Forms
             this.chkEditMode.Name = "chkEditMode";
             this.chkEditMode.Size = new System.Drawing.Size(160, 17);
             this.chkEditMode.TabIndex = 1;
-            this.chkEditMode.Text = "Редактирование постоянных";
+            this.chkEditMode.Text = "Редактирование поля 'По списку'";
             this.chkEditMode.UseVisualStyleBackColor = true;
             this.chkEditMode.CheckedChanged += new System.EventHandler(this.ChkEditMode_CheckedChanged);
 

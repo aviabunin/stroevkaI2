@@ -109,7 +109,7 @@ namespace stroevkaI.Forms
             this.btnSaveConst.Name = "btnSaveConst";
             this.btnSaveConst.Size = new System.Drawing.Size(120, 23);
             this.btnSaveConst.TabIndex = 1;
-            this.btnSaveConst.Text = "Сохранить (Всего)";
+            this.btnSaveConst.Text = "Сохранить (По списку)";
             this.btnSaveConst.UseVisualStyleBackColor = true;
             this.btnSaveConst.Click += new System.EventHandler(this.BtnSave_Click);
 

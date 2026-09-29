@@ -1,9 +1,4 @@
 ﻿// stroevkaI/Forms/CombinedResourcesEditor.cs
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Windows.Forms;
 using StorageI.ModelsStroevkaMySql;
 using StorageI.Repositories;
 using stroevkaI.Services;
@@ -215,7 +210,7 @@ namespace stroevkaI.Forms
             {
                 grid.AllowUserToAddRows = false;
                 grid.AllowUserToDeleteRows = false;
-                grid.ReadOnly = true;              // при включённом режиме снимем ниже
+                grid.ReadOnly = false;              // управляем через Row.ReadOnly
                 grid.RowHeadersVisible = false;
                 grid.SelectionMode = DataGridViewSelectionMode.CellSelect;
                 grid.MultiSelect = false;
@@ -264,14 +259,16 @@ namespace stroevkaI.Forms
 
             var grid = sender as DataGridView;
             if (grid == null) return;
-            if (grid.Rows[e.RowIndex].IsNewRow) return;
+
+            var row = grid.Rows[e.RowIndex];
+            if (row.IsNewRow) return;
+            if (row.ReadOnly) return;                              // ← добавили
+            if (grid.Columns[e.ColumnIndex].ReadOnly) return;      // ← добавили
 
             grid.BeginEdit(true);
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
-            if (cell.IsInEditMode)
-            {
-                if (grid.EditingControl is TextBox tb) tb.SelectAll();
-            }
+            if (cell.IsInEditMode && grid.EditingControl is TextBox tb)
+                tb.SelectAll();
         }
 
         // --------------------------------------------------------------
@@ -309,6 +306,7 @@ namespace stroevkaI.Forms
                 row.Cells["colWatersTotal"].Value = item.Total;
                 row.Cells["colWatersFault"].Value = item.Fault;
                 row.Tag = item;
+                row.ReadOnly = !_isEditingEnabled;   // ← добавили
             }
             dgvWaters.ClearSelection();
         }
@@ -327,6 +325,7 @@ namespace stroevkaI.Forms
                 row.Cells["colPenasInwork"].Value = item.Inwork;
                 row.Cells["colPenasInrezerv"].Value = item.Inrezerv;
                 row.Tag = item;
+                row.ReadOnly = !_isEditingEnabled;
             }
             dgvPenas.ClearSelection();
         }
@@ -347,6 +346,7 @@ namespace stroevkaI.Forms
                 row.Cells["colSizodsPostGdzs"].Value = item.PostGdzs;
                 row.Cells["colSizodsBazaGdzs"].Value = item.BazaGdzs;
                 row.Tag = item;
+                row.ReadOnly = !_isEditingEnabled;
             }
             dgvSizods.ClearSelection();
         }
@@ -364,10 +364,10 @@ namespace stroevkaI.Forms
                 row.Cells["colKostymsName"].Value = item.Mname;
                 row.Cells["colKostymsCount"].Value = item.N;
                 row.Tag = item;
+                row.ReadOnly = !_isEditingEnabled;
             }
             dgvKostyms.ClearSelection();
         }
-
         // --------------------------------------------------------------
         // Сбор значений из гридов
         // --------------------------------------------------------------
