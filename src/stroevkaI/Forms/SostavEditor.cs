@@ -105,24 +105,14 @@ namespace stroevkaI.Forms
         private void DgvSostav_CellEnter(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (e.ColumnIndex != colCount.Index) return;
 
-            if (e.ColumnIndex == colCount.Index)
-            {
-                var row = dgvSostav.Rows[e.RowIndex];
-                if (row.Tag is Sostav item && !row.ReadOnly)
-                {
-                    dgvSostav.BeginEdit(true);
-                    var cell = dgvSostav.Rows[e.RowIndex].Cells[e.ColumnIndex];
-                    if (cell.IsInEditMode)
-                    {
-                        var textBox = dgvSostav.EditingControl as TextBox;
-                        if (textBox != null)
-                        {
-                            textBox.SelectAll();
-                        }
-                    }
-                }
-            }
+            var row = dgvSostav.Rows[e.RowIndex];
+            if (row.ReadOnly) return;
+            if (row.Cells[e.ColumnIndex].ReadOnly) return;   // ← ключевое
+
+            dgvSostav.BeginEdit(true);
+            if (dgvSostav.EditingControl is TextBox tb) tb.SelectAll();
         }
         public void LoadData()
         {
@@ -271,7 +261,7 @@ namespace stroevkaI.Forms
 
         private void RefreshGrid()
         {
-            // Сохраняем текущую выбранную строку
+            #region Сохраняем текущую выбранную строку и удаляем все строки
             int selectedRowIndex = -1;
             if (dgvSostav.CurrentRow != null && dgvSostav.CurrentRow.Tag is Sostav)
             {
@@ -285,7 +275,7 @@ namespace stroevkaI.Forms
                 lblTitle.Text = "Личный состав - нет данных";
                 return;
             }
-
+            #endregion
             var groups = _currentData
                 .GroupBy(s => s.SostavVid ?? "Без группы")
                 .OrderBy(g => g.Key);
@@ -293,7 +283,7 @@ namespace stroevkaI.Forms
             int currentRowIndex = 0;
             foreach (var group in groups)
             {
-                // Групповая строка
+                #region Групповая строка
                 int groupRowIndex = dgvSostav.Rows.Add();
                 var groupRow = dgvSostav.Rows[groupRowIndex];
                 groupRow.Cells["colName"].Value = group.Key;
@@ -304,7 +294,7 @@ namespace stroevkaI.Forms
                 groupRow.Tag = "GROUP";
                 groupRow.ReadOnly = true;
                 groupRow.Height = 28;
-
+                #endregion
                 foreach (var item in group.OrderBy(s => s.Norder))
                 {
                     int rowIndex = dgvSostav.Rows.Add();
@@ -312,7 +302,7 @@ namespace stroevkaI.Forms
                     row.Cells["colId"].Value = item.Id;
                     row.Cells["colName"].Value = item.Name;
 
-                    // Проверяем, является ли поле вычисляемым
+                    // Проверяем, является ли строка(поле) вычисляемой
                     bool isCalculated = IsCalculatedField(item.Name, item.SostavVid);
 
                     if (isCalculated)
@@ -342,14 +332,43 @@ namespace stroevkaI.Forms
                             row.ReadOnly = false;
                         }
                     }
-                    row.Height = 25;
+                    #region Определяем, редактируется ли эта строка
+                    bool editable =
+                        !IsAlwaysReadOnlyField(item.Name, item.SostavVid) &&
+                        (!IsPasswordOnlyField(item.Name, item.SostavVid) || _isConstEditEnabled);
 
-                    // Восстанавливаем выбор
+                    row.ReadOnly = !editable;
+                    row.Cells["colCount"].ReadOnly = !editable;   // ← ключевое
+
+                    // Цветовая индикация
+                    if (IsAlwaysReadOnlyField(item.Name, item.SostavVid))
+                    {
+                        row.DefaultCellStyle.BackColor = Color.FromArgb(240, 248, 255);
+                        row.DefaultCellStyle.Font = new Font(dgvSostav.Font, FontStyle.Bold);
+                    }
+                    else if (IsPasswordOnlyField(item.Name, item.SostavVid))
+                    {
+                        row.DefaultCellStyle.BackColor = Color.FromArgb(255, 255, 224);
+                        row.DefaultCellStyle.Font = new Font(dgvSostav.Font, FontStyle.Italic);
+                    }
+                    else
+                    {
+                        row.DefaultCellStyle.BackColor = Color.White;
+                        row.DefaultCellStyle.Font = dgvSostav.Font;
+                    }
+
+                    row.Tag = item;
+                    #endregion
+
+
+                    #region Восстанавливаем выбор
+                    row.Height = 25;
                     if (selectedRowIndex >= 0 && currentRowIndex == selectedRowIndex)
                     {
                         dgvSostav.CurrentCell = row.Cells["colCount"];
                     }
-                    currentRowIndex++;
+                    currentRowIndex++;//TODO разобраться зачем это?
+                    #endregion
                 }
             }
 
@@ -568,11 +587,7 @@ namespace stroevkaI.Forms
             if (chkEditMode.Checked)
             {
                 using var passwordForm = new PasswordInputForm();
-                if (passwordForm.ShowDialog() != DialogResult.OK)
-                {
-                    chkEditMode.Checked = false;
-                    return;
-                }
+                if (passwordForm.ShowDialog() != DialogResult.OK) { chkEditMode.Checked = false; return; }
                 if (passwordForm.Password != ADMIN_PASSWORD)
                 {
                     chkEditMode.Checked = false;
@@ -581,22 +596,17 @@ namespace stroevkaI.Forms
                     return;
                 }
                 _isConstEditEnabled = true;
+                btnSaveConst.Enabled = true;
             }
             else
             {
                 _isConstEditEnabled = false;
+                btnSaveConst.Enabled = false;
+                RecalculateAllCalculatedFields();
             }
 
-            // Открываем/закрываем только "По списку (1 Общие)"
-            foreach (DataGridViewRow row in dgvSostav.Rows)
-            {
-                if (row.Tag is Sostav item && IsPasswordOnlyField(item.Name, item.SostavVid))
-                {
-                    row.ReadOnly = !_isConstEditEnabled;
-                }
-            }
+            RefreshGrid();   // ← перерисовка учтёт флаг и заново расставит ReadOnly
         }
-
         private void DgvSostav_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;

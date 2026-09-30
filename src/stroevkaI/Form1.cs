@@ -507,50 +507,28 @@ namespace stroevkaI
         }
         private async Task RecalculatePivotRowsAsync()
         {
-            var confirm = MessageBox.Show(
-                "Пересчитать pivot_rows для всех ПСГ?\n" +
-                "Это может занять несколько минут.",
-                "Подтверждение",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Question);
-
-            if (confirm != DialogResult.Yes) return;
-
-            //_refreshTimer?.Stop();
+            // Диалога подтверждения больше нет
             Cursor = Cursors.WaitCursor;
+            UpdateStatus("Пересчёт pivot_rows...");
 
             try
             {
                 var sw = Stopwatch.StartNew();
-                int totalSaved = 0;
-                var errors = new List<string>();
 
-                string psgName = "Территориальный";
-
-                //AppStatusService statusApp = new AppStatusService("","",new List<string>() { @"D:\"});
-                //string basePath = @"D:\";
-                //JsonDataService service = new JsonDataService(basePath);
-                //_treeBuilder = new PivotTreeBuilder(context,statusApp, service);
-                var rows = await _treeBuilder.GeneratePivotRowsAsync(psgName, forceReload: true);
-                var rezult =  PivotRowsRepository.SavePivotRows(rows);
+                var rows = await _treeBuilder.GeneratePivotRowsAsync("Территориальный", forceReload: true);
+                var result = PivotRowsRepository.SavePivotRows(rows);
 
                 sw.Stop();
-                Cursor = Cursors.Default;
+                Log.Write($"[Recalc] за {sw.Elapsed.TotalSeconds:F1} сек, " +
+                          $"+{result.Inserted} ~{result.Updated} ={result.Unchanged}");
 
-                string msg = $"Пересчёт завершён за {sw.Elapsed.TotalSeconds:F1} сек.\n" +
-                             $"Сохранено строк: {rezult.Updated}";
+                UpdateStatus($"Пересчёт: +{result.Inserted} ~{result.Updated} " +
+                             $"за {sw.Elapsed.TotalMilliseconds:F0} мс");
 
-                //if (rezult.errors.Count > 0)
-                //{
-                //    msg += $"\n\nОшибок: {errors.Count}\n" +
-                //           string.Join("\n", errors.Take(5));
-                //}
-
-                MessageBox.Show(msg, "Готово", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                // Перечитываем и обновляем грид
                 _allPivotRows = FastPivotLoader.LoadAll();
                 ShowView(rootPsgName);
+
+                //ChangeLogService.Instance.Clear();//TODO - пока не сделал
             }
             catch (Exception ex)
             {
@@ -560,7 +538,6 @@ namespace stroevkaI
             finally
             {
                 Cursor = Cursors.Default;
-                //_refreshTimer?.Start();
             }
         }
         private async void SaveCurrentPchData() {
