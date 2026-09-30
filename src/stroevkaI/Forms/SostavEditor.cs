@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using StorageI.ModelsStroevkaMySql;
 using StorageI.Repositories;
+using stroevkaI.Services;
 
 namespace stroevkaI.Forms
 {
@@ -641,26 +642,82 @@ namespace stroevkaI.Forms
         }
 
         // Обработчик события CellEndEdit - ПЕРЕСЧЁТ БЕЗ ПОЛНОЙ ПЕРЕСТРОЙКИ ГРИДА
+        //private void DgvSostav_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        //{
+        //    if (e.RowIndex < 0) return;
+        //    var row = dgvSostav.Rows[e.RowIndex];
+        //    if (row.Tag is not Sostav item) return;
+
+        //    // Обновляем данные из грида
+        //    if (!IsCalculatedField(item.Name, item.SostavVid))
+        //    {
+        //        item.Count = ParseInt(row.Cells["colCount"].Value);
+        //    }
+
+        //    // Пересчитываем всю цепочку зависимостей
+        //    RecalculateAllCalculatedFields();
+
+        //    // Обновляем только вычисляемые строки в гриде (не всю таблицу)
+        //    UpdateCalculatedFieldsInGrid();
+
+        //    OnDataChanged();
+
+        //    if (!IsCalculatedField(item.Name, item.SostavVid))
+        //    {
+        //        int oldValue = item.Count ?? 0;
+        //        int newValue = ParseInt(row.Cells["colCount"].Value);
+        //        if (oldValue != newValue)
+        //        {
+        //            item.Count = newValue;
+        //            ChangeLogService.Instance.Add(
+        //                _subdivisionId,
+        //                $"ПЧ {_subdivisionId}",
+        //                "sostav",
+        //                $"{item.Name} ({item.SostavVid})",
+        //                oldValue,
+        //                newValue);
+        //        }
+        //    }
+        //}
         private void DgvSostav_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
             var row = dgvSostav.Rows[e.RowIndex];
             if (row.Tag is not Sostav item) return;
 
-            // Обновляем данные из грида
+            // 1. Сохраняем старое значение ДО обновления
+            int oldValue = item.Count ?? 0;
+
+            // 2. Обновляем данные из грида (только для невычисляемых полей)
             if (!IsCalculatedField(item.Name, item.SostavVid))
             {
-                item.Count = ParseInt(row.Cells["colCount"].Value);
+                int newValue = ParseInt(row.Cells["colCount"].Value);
+                item.Count = newValue;
+
+                // 3. Пересчёт и обновление вычисляемых полей
+                RecalculateAllCalculatedFields();
+                UpdateCalculatedFieldsInGrid();
+                OnDataChanged();
+
+                // 4. Логируем изменение, если значение реально изменилось
+                if (oldValue != newValue)
+                {
+                    ChangeLogService.Instance.Add(
+                        _subdivisionId,
+                        $"ПЧ {_subdivisionId}",
+                        "sostav",
+                        $"{item.Name} ({item.SostavVid})",
+                        oldValue,
+                        newValue);
+                }
             }
-
-            // Пересчитываем всю цепочку зависимостей
-            RecalculateAllCalculatedFields();
-
-            // Обновляем только вычисляемые строки в гриде (не всю таблицу)
-            UpdateCalculatedFieldsInGrid();
-
-            OnDataChanged();
+            else
+            {
+                // Для вычисляемых полей просто пересчитываем и обновляем
+                RecalculateAllCalculatedFields();
+                UpdateCalculatedFieldsInGrid();
+                OnDataChanged();
+            }
         }
-
     }
 }
