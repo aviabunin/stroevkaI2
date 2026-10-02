@@ -56,6 +56,8 @@
             this.stroevkaHelpDoc1 = new stroevkaI.Controls.StroevkaHelpDoc();
             this.commandTab = new System.Windows.Forms.TabPage();
             this.listBoxTools = new System.Windows.Forms.ListBox();
+            this.logTabPage = new System.Windows.Forms.TabPage();
+            this.changeLogPanel1 = new stroevkaI.Forms.ChangeLogPanel();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.PivotRowGrid = new System.Windows.Forms.DataGridView();
             this.dataGridViewTextBoxColumn1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -128,8 +130,6 @@
             this.dataGridViewTextBoxColumn67 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumn68 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.logTabPage = new System.Windows.Forms.TabPage();
-            this.changeLogPanel1 = new stroevkaI.Forms.ChangeLogPanel();
             this.panelTop.SuspendLayout();
             this.toolStripRight.SuspendLayout();
             this.toolStripLeft.SuspendLayout();
@@ -143,11 +143,11 @@
             this.tabControl1.SuspendLayout();
             this.HelpTab.SuspendLayout();
             this.commandTab.SuspendLayout();
+            this.logTabPage.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).BeginInit();
             this.splitContainer2.Panel1.SuspendLayout();
             this.splitContainer2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.PivotRowGrid)).BeginInit();
-            this.logTabPage.SuspendLayout();
             this.SuspendLayout();
             // 
             // panelTop
@@ -392,12 +392,32 @@
             this.listBoxTools.IntegralHeight = false;
             this.listBoxTools.ItemHeight = 15;
             this.listBoxTools.Items.AddRange(new object[] {
-            "Обновить"});
+            "Обновить программу",
+            "Обновить данные"});
             this.listBoxTools.Location = new System.Drawing.Point(3, 3);
             this.listBoxTools.Name = "listBoxTools";
             this.listBoxTools.Size = new System.Drawing.Size(223, 367);
             this.listBoxTools.TabIndex = 1;
             this.listBoxTools.SelectedIndexChanged += new System.EventHandler(this.ListBoxTools_SelectedIndexChanged);
+            // 
+            // logTabPage
+            // 
+            this.logTabPage.Controls.Add(this.changeLogPanel1);
+            this.logTabPage.Location = new System.Drawing.Point(4, 22);
+            this.logTabPage.Name = "logTabPage";
+            this.logTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.logTabPage.Size = new System.Drawing.Size(229, 373);
+            this.logTabPage.TabIndex = 2;
+            this.logTabPage.Text = "Лог изменений";
+            this.logTabPage.UseVisualStyleBackColor = true;
+            // 
+            // changeLogPanel1
+            // 
+            this.changeLogPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.changeLogPanel1.Location = new System.Drawing.Point(3, 3);
+            this.changeLogPanel1.Name = "changeLogPanel1";
+            this.changeLogPanel1.Size = new System.Drawing.Size(223, 367);
+            this.changeLogPanel1.TabIndex = 0;
             // 
             // splitContainer2
             // 
@@ -987,25 +1007,6 @@
             this.dataGridViewTextBoxColumn68.Name = "dataGridViewTextBoxColumn68";
             this.dataGridViewTextBoxColumn68.Width = 120;
             // 
-            // logTabPage
-            // 
-            this.logTabPage.Controls.Add(this.changeLogPanel1);
-            this.logTabPage.Location = new System.Drawing.Point(4, 22);
-            this.logTabPage.Name = "logTabPage";
-            this.logTabPage.Padding = new System.Windows.Forms.Padding(3);
-            this.logTabPage.Size = new System.Drawing.Size(229, 373);
-            this.logTabPage.TabIndex = 2;
-            this.logTabPage.Text = "Лог изменений";
-            this.logTabPage.UseVisualStyleBackColor = true;
-            // 
-            // changeLogPanel1
-            // 
-            this.changeLogPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.changeLogPanel1.Location = new System.Drawing.Point(3, 3);
-            this.changeLogPanel1.Name = "changeLogPanel1";
-            this.changeLogPanel1.Size = new System.Drawing.Size(223, 367);
-            this.changeLogPanel1.TabIndex = 0;
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1037,11 +1038,11 @@
             this.tabControl1.ResumeLayout(false);
             this.HelpTab.ResumeLayout(false);
             this.commandTab.ResumeLayout(false);
+            this.logTabPage.ResumeLayout(false);
             this.splitContainer2.Panel1.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer2)).EndInit();
             this.splitContainer2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.PivotRowGrid)).EndInit();
-            this.logTabPage.ResumeLayout(false);
             this.ResumeLayout(false);
 
         }

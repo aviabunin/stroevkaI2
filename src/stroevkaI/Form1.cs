@@ -10,6 +10,8 @@ using System.ComponentModel;
 using System.Text;
 using stroevkaI.Services;
 using StorageI.Services;
+using System.Diagnostics;
+using System.IO;
 
 
 namespace stroevkaI
@@ -77,6 +79,7 @@ namespace stroevkaI
 
 
             _columnManager = new ColumnVisibilityManager(PivotRowGrid);
+            int a = 1;
         }
         /// <summary>
         /// Detect - надо будет посмотреть весь цикл работы с дисками и сетью
@@ -475,7 +478,11 @@ namespace stroevkaI
 
             string selectedItem = listBoxTools.SelectedItem.ToString();
 
-            if (selectedItem == "Обновить")
+            if (selectedItem == "Обновить программу")
+            {
+                await updateStroevka();
+            }
+            else if (selectedItem == "Обновить данные")
             {
                 await RecalculatePivotRowsAsync();
             }
@@ -756,7 +763,45 @@ namespace stroevkaI
         }
         #endregion
 
+        private async Task updateStroevka() {
+            string updater = Path.Combine(AppContext.BaseDirectory, "stroevkaUpdate.exe");
+            if (!File.Exists(updater))
+            {
+                MessageBox.Show(
+                    "Не найден модуль обновления:\n" + updater +
+                    "\n\nУбедитесь, что рядом с программой лежит stroevkaUpdate.exe.",
+                    "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
+            var res = MessageBox.Show(
+                "Запустить процедуру обновления программы?\n\n" +
+                "Текущая версия будет закрыта автоматически.",
+                "Обновление",
+                MessageBoxButtons.OKCancel,
+                MessageBoxIcon.Question);
+
+            if (res != DialogResult.OK) return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = updater,
+                    WorkingDirectory = AppContext.BaseDirectory,
+                    UseShellExecute = false
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Не удалось запустить модуль обновления:\n" + ex.Message,
+                                "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+
+        }
+
+            
 
         private void compareAllPsg() {
 
