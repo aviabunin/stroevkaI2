@@ -17,7 +17,7 @@ namespace stroevkaI
             Log.Write($"[Start] DB host = {StorageI.Services.DbConfig.Host}, " +
                       $"remote = {StorageI.Services.DbConfig.IsRemote}");
 
-            // Прогрев EF-модели в фоне, чтобы первое открытие редактора было быстрым
+            // Прогрев EF-модели в фоне, чтобы первое открытие редактора было быстрым  
             Task.Run(() =>
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();

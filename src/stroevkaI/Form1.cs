@@ -20,6 +20,7 @@ namespace stroevkaI
     {
         #region Параметры программы
 
+        string test = "05-10-26  11:45"; // просто чтобы дата .exe изменилась
         PivotRowEditor _pivotEditor;
         public event EventHandler DataChanged;
         private bool _isRefreshing = false;
