@@ -764,43 +764,6 @@ namespace stroevkaI
         }
         #endregion
 
-        //private async Task updateStroevka() {
-        //    string updater = Path.Combine(AppContext.BaseDirectory, "stroevkaUpdate.exe");
-        //    if (!File.Exists(updater))
-        //    {
-        //        MessageBox.Show(
-        //            "Не найден модуль обновления:\n" + updater +
-        //            "\n\nУбедитесь, что рядом с программой лежит stroevkaUpdate.exe.",
-        //            "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        //        return;
-        //    }
-
-        //    var res = MessageBox.Show(
-        //        "Запустить процедуру обновления программы?\n\n" +
-        //        "Текущая версия будет закрыта автоматически.",
-        //        "Обновление",
-        //        MessageBoxButtons.OKCancel,
-        //        MessageBoxIcon.Question);
-
-        //    if (res != DialogResult.OK) return;
-
-        //    try
-        //    {
-        //        Process.Start(new ProcessStartInfo
-        //        {
-        //            FileName = updater,
-        //            WorkingDirectory = AppContext.BaseDirectory,
-        //            UseShellExecute = false
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        MessageBox.Show("Не удалось запустить модуль обновления:\n" + ex.Message,
-        //                        "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        //    }
-
-
-        //}
 
         private async Task updateStroevka()
         {
@@ -814,35 +777,19 @@ namespace stroevkaI
 
             var res = MessageBox.Show(
                 "Запустить процедуру обновления программы?\n\n" +
-                "Текущая версия будет закрыта автоматически.",
+                "Текущая версия НЕ будет закрыта — просто сохранится копия новой версии.",
                 "Обновление",
                 MessageBoxButtons.OKCancel,
                 MessageBoxIcon.Question);
 
-            if (res != DialogResult.OK) 
-                return;
+            if (res != DialogResult.OK) return;
 
-            try
+            Process.Start(new ProcessStartInfo
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = updater,
-                    WorkingDirectory = AppContext.BaseDirectory,
-                    Arguments = $"--from-stroevka \"{AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar)}\"",
-                    UseShellExecute = false
-                });
-
-                // Дадим модулю время стартовать и показать UI
-                await Task.Delay(800);
-
-                // Закрываем текущее приложение
-                Application.Exit();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Не удалось запустить модуль обновления:\n" + ex.Message,
-                                "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+                FileName = updater,
+                WorkingDirectory = AppContext.BaseDirectory,
+                UseShellExecute = false
+            });
         }
 
         private void compareAllPsg() {
