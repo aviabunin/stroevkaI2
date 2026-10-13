@@ -104,7 +104,7 @@ namespace stroevkaI
             _treeBuilder = new PivotTreeBuilder(context, _appStatus, _jsonService);
             Mark("Services created");
 
-            // 1. Ѕџ—“–јя отрисовка из pivot_rows
+            #region 1. Ѕџ—“–јя отрисовка из pivot_rows (+ create comboPsg)
             _allPivotRows = FastPivotLoader.LoadAll();
             Mark($"LoadAll ({_allPivotRows.Count})");
 
@@ -122,15 +122,18 @@ namespace stroevkaI
 
             ShowView(rootPsgName);
             Mark($"Fast ShowView({rootPsgName})");
+            #endregion
 
-            // 2. ‘ќЌќ¬јя полна€ загрузка + пересчЄт
+            #region 2. ‘ќЌќ¬јя полна€ загрузка + пересчЄт+ перерисовка грида
             await LoadCacheAndRecalculateAsync();
             Mark("Cache loaded");
+
 
             // 3. ѕерерисовать на актуальных данных
             _allPivotRows = AppDataCache.Instance.PivotRows;
             ShowView(rootPsgName);
             UpdateStatus($"ќбновлено на {AppDataCache.Instance.LastLoadedAt:HH:mm:ss}");
+            #endregion
         }
         private async Task LoadCacheAndRecalculateAsync()
         {
@@ -139,7 +142,7 @@ namespace stroevkaI
             // Ётап 1: справочники Ч в фоне
             await Task.Run(() => AppDataCache.Instance.LoadAll());
 
-            UpdateStatus("ѕересчЄт PivotRows...");
+            UpdateStatus("ѕересчЄт данных по ѕ—√ (3-4 секунды). ќбнов€тс€ автоматически в фоне");
 
             // Ётап 2: пересчЄт Ч тоже в фоне
             try
@@ -209,7 +212,7 @@ namespace stroevkaI
                 rows = PivotRowDisplayBuilder.BuildPsgView(_allPivotRows, psgId);
 
             PivotRowGrid.DataSource = rows;
-            HighlightDatafilledRows();
+            HighlightDatafilledRows(); //TODO 
             UpdateStatus($"{psgName}: {rows.Count} строк");
         }
 
@@ -764,7 +767,7 @@ namespace stroevkaI
         }
         #endregion
 
-
+        #region ќбновление версии stroevka 27
         private async Task updateStroevka()
         {
             string updater = Path.Combine(AppContext.BaseDirectory, "stroevkaUpdate.exe");
@@ -791,7 +794,9 @@ namespace stroevkaI
                 UseShellExecute = false
             });
         }
+        #endregion
 
+        #region —равнение данных с оригиналом из monitor_stroevka
         private void compareAllPsg() {
 
             if (compareAllWorker != null && compareAllWorker.IsBusy)
@@ -836,13 +841,11 @@ namespace stroevkaI
 
             e.Result = allResults;
         }
-
         private void CompareAllWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             if (statusStrip1.Items.Count > 0)
                 statusStrip1.Items[0].Text = e.UserState?.ToString() ?? "";
         }
-
         private void CompareAllWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
           //  btnCompareAll.Enabled = true;
@@ -867,8 +870,6 @@ namespace stroevkaI
             sb.Insert(0, $"¬сего расхождений: {totalErrors}\n\n");
             MessageBox.Show(sb.ToString(), "–езультаты сравнени€ всех ѕ—√", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-
-
         private List<GridComparisonResult> CompareSinglePsg(string psgName)
         {
             // ‘ормируем путь к Excel-файлу
@@ -898,7 +899,7 @@ namespace stroevkaI
 
             return results;
         }
-
+        #endregion
 
 
         private string BuildTooltipText(List<DetailItem> details, string columnName)

@@ -15,7 +15,7 @@ namespace StorageI.ModelsStroevkaMySql
         public long? Parent { get; set; }
         public int? Norder { get; set; }
         public long Isitog { get; set; }
-        public string? Datafilled { get; set; }
+        public bool? Datafilled { get; set; }
         public decimal? AcBr { get; set; }
         public decimal? AcRezerv { get; set; }
         public decimal? AcRemont { get; set; }

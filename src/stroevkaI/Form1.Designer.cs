@@ -60,6 +60,7 @@
             this.changeLogPanel1 = new stroevkaI.Forms.ChangeLogPanel();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.PivotRowGrid = new System.Windows.Forms.DataGridView();
+            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.dataGridViewTextBoxColumn1 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.Datafilled = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.dataGridViewTextBoxColumn2 = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -129,7 +130,6 @@
             this.dataGridViewTextBoxColumn66 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumn67 = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.dataGridViewTextBoxColumn68 = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.panelTop.SuspendLayout();
             this.toolStripRight.SuspendLayout();
             this.toolStripLeft.SuspendLayout();
@@ -532,6 +532,7 @@
             // 
             // Datafilled
             // 
+            this.Datafilled.DataPropertyName = "Datafilled";
             this.Datafilled.HeaderText = "Сделано";
             this.Datafilled.Name = "Datafilled";
             this.Datafilled.Width = 30;
@@ -1078,6 +1079,9 @@
         private Controls.StroevkaHelpDoc stroevkaHelpDoc1;
         private TabPage commandTab;
         private ListBox listBoxTools;
+        private ToolStripStatusLabel toolStripStatusLabel1;
+        private TabPage logTabPage;
+        private Forms.ChangeLogPanel changeLogPanel1;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn1;
         private DataGridViewCheckBoxColumn Datafilled;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn2;
@@ -1147,9 +1151,6 @@
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn66;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn67;
         private DataGridViewTextBoxColumn dataGridViewTextBoxColumn68;
-        private ToolStripStatusLabel toolStripStatusLabel1;
-        private TabPage logTabPage;
-        private Forms.ChangeLogPanel changeLogPanel1;
 
         // СОЗДАЕМ ПРУЖИНУ
 

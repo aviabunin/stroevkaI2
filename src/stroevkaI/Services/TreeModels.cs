@@ -16,6 +16,7 @@ namespace stroevkaI.Models
         public List<ReportNode> Children { get; set; } = new List<ReportNode>();  // дочки
         public int Isitog { get; set; }                       //  признак итогой строки
         public int Norder { get; set; }
+        public int datafilled { get; set; }
 
         // RawData: sourceType -> (itemName -> (fieldName -> value))
         public Dictionary<string, Dictionary<string, Dictionary<string, decimal>>> RawData { get; set; }

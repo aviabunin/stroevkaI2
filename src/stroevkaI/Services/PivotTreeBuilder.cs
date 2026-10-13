@@ -620,7 +620,7 @@ namespace stroevkaI.Services
 
             // Для итоговых строк эти поля пустые
             row.Начкар = "";
-            row.Datafilled = "";
+            row.Datafilled = GetDataFilled(row.Id); //TODO править
             return row;
         }
         private List<PivotRow> GetPsgRowsByCategory(List<PivotRow> allPsgRows, string category)
@@ -739,13 +739,13 @@ namespace stroevkaI.Services
 
 
             //найти в psgstat строку с подчинением psgNode и данной категорией 
-            var psgstat_row = _context.Psgstats.Where(c => c.Id == psgNode.Id && c.Garntype.Contains(categoryName)).FirstOrDefault();
+            var psgstat_row = _context.Psgstats.Where(c =>c.Isitog==1 && c.Parent == psgNode.Id && c.Displayname.Contains(categoryName)).FirstOrDefault();
 
             int idr = 0;
             if (psgstat_row != null)
                 idr = psgstat_row.Id;
             else 
-                idr = psgNode.Id*10000+Norders[categoryName];// Фиктивное Id , в итогах ПСГ строки нет
+                idr = psgNode.Id*10000+Norders[categoryName];// Фиктивное Id ,  в итогах ПСГ строки нет
             var row = new PivotRow
             {
                 Id = idr,
@@ -799,14 +799,30 @@ namespace stroevkaI.Services
             }
 
             row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
+            row.Datafilled = GetDataFilled(row.Id);
             return row;
         }
+
+        private bool GetDataFilled(int psgstatId) {
+
+            bool datafilled = false;
+            var psgDataRow = _context.Psgdata.Where(c => c.Id == psgstatId).FirstOrDefault();
+            if (psgDataRow != null)
+                datafilled = psgDataRow.Datafilled;
+            else
+                datafilled = false;
+
+            return datafilled;
+        }
+
+
         private PivotRow CreateLeafRow(ReportNode leaf)
         {
             var row = new PivotRow
             {
                 Id = leaf.Id,
                 Псг = GetPsgNameForNode(leaf),
+                Datafilled = GetDataFilled(leaf.Id),
                 Пч = leaf.Name, //  это просто Name(psgstat) =  garnizon(psgdata)
                 Category = leaf.Category,
                 PchId = leaf.Id,            // Id ПЧ т.к. это лист
@@ -840,7 +856,7 @@ namespace stroevkaI.Services
                 row.Начкар = "";
             }
 
-            //и Datafilled – как было
+            //и Datafilled – как было   //TODO сформировать
             // ...
 
             return row;
@@ -892,7 +908,8 @@ namespace stroevkaI.Services
                 }
             }
             // Дополнительно можно скопировать текстовые поля (если нужно)
-            // Например, Nachkar, Datafilled – для итогов обычно пустые
+            // Например, Nachkar, Datafilled – для итогов обычно пустые  - TODO - брать из psgstat - или завести поле в  ??? где - там же где nachkar???
+                                      // сейчас брать из psgstat в treeBuilder or generatePivotRows
             row.ВсегоОтс = (row.ПоСписку ?? 0) - (row.Налицо ?? 0);
             return row;
         }
@@ -1199,6 +1216,16 @@ namespace stroevkaI.Services
                     FilterValues = new List<string> { "ОЗК" },
                     AggregateField = "n"
                 },
+                #endregion
+
+                #region ---- общие по ПЧ - datafilled (сюда же и ПоСписку и может что-то ещё) - затем завести эти поля
+                // пока берётся из psgstat
+                // в таблице pchs - ПоСписку, datafilled,nachkar - они формируются в определённое время или по определённому событию
+                // это не БР, не Состав и т.п. это характеристики ПЧ, а psgstat - не будет
+                // здесь же будут - общее колич техники... и тп. прочие постоянные или суточно-постоянные данные
+                // важно , что эта таблица актуальных данных, которая включает в себя часть данных из psgstat
+                //["Datafilled"] = new ColumnConfig { PropertyName = "Datafilled", SourceTable = "psgdata", AggregateField = "count" },
+                // похоже можно её формировать при построении дерева из psgdata , пока
                 #endregion
                 #region ---- Личный состав (sostav) ----
 
